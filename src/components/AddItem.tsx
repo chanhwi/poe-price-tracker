@@ -8,19 +8,16 @@ interface Props {
 
 export default function AddItem({ onAdd }: Props) {
   const [text, setText] = useState("");
-  const [byName, setByName] = useState(true);
   const [corrupted, setCorrupted] = useState(false);
 
   function add() {
     const term = text.trim();
     if (!term) return;
-    const spec: QuerySpec = { onlineOnly: true, corrupted };
-    if (byName) {
-      spec.name = term;
-      spec.rarity = "unique";
-    } else {
-      spec.type = term;
-    }
+    // Free-text search (`term`) — forgiving, like the trade site's search box.
+    // `query.name`/`query.type` require an EXACT unique name / base type and
+    // 400 on anything else, so exact matching is opt-in via the ⚙️ accordion.
+    const spec: QuerySpec = { onlineOnly: true, term };
+    if (corrupted) spec.corrupted = true;
     onAdd({
       id: newId(),
       label: term,
@@ -42,12 +39,9 @@ export default function AddItem({ onAdd }: Props) {
         onKeyDown={(e) => {
           if (e.key === "Enter") add();
         }}
-        placeholder="아이템 이름(유니크) 또는 베이스 타입"
-        style={{ flex: 1, minWidth: 200 }}
+        placeholder="아이템 이름 또는 베이스 (자유 검색 — 정확 매칭은 ⚙️에서)"
+        style={{ flex: 1, minWidth: 220 }}
       />
-      <label>
-        <input type="checkbox" checked={byName} onChange={(e) => setByName(e.currentTarget.checked)} /> 이름으로(유니크)
-      </label>
       <label>
         <input type="checkbox" checked={corrupted} onChange={(e) => setCorrupted(e.currentTarget.checked)} /> 타락
       </label>
