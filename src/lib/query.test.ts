@@ -18,20 +18,17 @@ function item(p: Partial<ParsedItem>): ParsedItem {
 }
 
 describe("specFromParsedItem", () => {
-  it("unique -> name + rarity unique + corrupted", () => {
-    const s = specFromParsedItem(
-      item({ rarity: "unique", name: "Tabula Rasa", base_type: "Simple Robe", corrupted: true })
-    );
+  it("unique -> name + rarity filter + corrupted filter", () => {
+    const s = specFromParsedItem(item({ rarity: "unique", name: "Tabula Rasa", corrupted: true }));
     expect(s.name).toBe("Tabula Rasa");
-    expect(s.rarity).toBe("unique");
-    expect(s.corrupted).toBe(true);
-    expect(s.type).toBeUndefined();
+    expect(s.filters?.type_filters?.rarity?.option).toBe("unique");
+    expect(s.filters?.misc_filters?.corrupted?.option).toBe("true");
   });
 
-  it("rare -> type (base type), no name", () => {
-    const s = specFromParsedItem(item({ rarity: "rare", name: "Gale Grip", base_type: "Stellar Gauntlets" }));
+  it("rare -> type, no rarity filter", () => {
+    const s = specFromParsedItem(item({ rarity: "rare", base_type: "Stellar Gauntlets" }));
     expect(s.type).toBe("Stellar Gauntlets");
-    expect(s.name).toBeUndefined();
+    expect(s.filters?.type_filters).toBeUndefined();
   });
 
   it("currency -> type by name", () => {
@@ -41,8 +38,12 @@ describe("specFromParsedItem", () => {
 });
 
 describe("buildSearchBody", () => {
-  it("unique body: name, rarity filter, corrupted filter, sort asc", () => {
-    const body = buildSearchBody({ name: "Tabula Rasa", rarity: "unique", corrupted: true, onlineOnly: true }) as any;
+  it("unique body: name + status + nested filters + sort", () => {
+    const body = buildSearchBody({
+      name: "Tabula Rasa",
+      status: "online",
+      filters: { type_filters: { rarity: { option: "unique" } }, misc_filters: { corrupted: { option: "true" } } },
+    }) as any;
     expect(body.query.name).toBe("Tabula Rasa");
     expect(body.query.status.option).toBe("online");
     expect(body.query.filters.type_filters.filters.rarity.option).toBe("unique");
@@ -50,13 +51,24 @@ describe("buildSearchBody", () => {
     expect(body.sort.price).toBe("asc");
   });
 
-  it("minimal spec -> only status + sort, no filters", () => {
+  it("minimal -> status + sort only, no filters", () => {
     const body = buildSearchBody({ type: "Stellar Gauntlets" }) as any;
     expect(body.query.type).toBe("Stellar Gauntlets");
+    expect(body.query.status.option).toBe("online");
     expect(body.query.filters).toBeUndefined();
   });
 
-  it("disabled stats are dropped; active ones compiled", () => {
+  it("range filter pruned to set bounds", () => {
+    const body = buildSearchBody({ type: "X", filters: { type_filters: { ilvl: { min: 80 } } } }) as any;
+    expect(body.query.filters.type_filters.filters.ilvl).toEqual({ min: 80 });
+  });
+
+  it("empty option value is dropped", () => {
+    const body = buildSearchBody({ type: "X", filters: { type_filters: { rarity: { option: "" } } } }) as any;
+    expect(body.query.filters).toBeUndefined();
+  });
+
+  it("disabled stats dropped; active compiled", () => {
     const body = buildSearchBody({
       type: "X",
       stats: [
@@ -65,17 +77,11 @@ describe("buildSearchBody", () => {
       ],
     }) as any;
     expect(body.query.stats[0].filters).toHaveLength(1);
-    expect(body.query.stats[0].filters[0].id).toBe("explicit.stat_1");
     expect(body.query.stats[0].filters[0].value.min).toBe(50);
   });
 
-  it("ilvl range is pruned to set bounds only", () => {
-    const body = buildSearchBody({ type: "X", minIlvl: 80 }) as any;
-    expect(body.query.filters.misc_filters.filters.ilvl).toEqual({ min: 80 });
-  });
-
-  it("onlineOnly false -> status any", () => {
-    const body = buildSearchBody({ type: "X", onlineOnly: false }) as any;
+  it("status any", () => {
+    const body = buildSearchBody({ type: "X", status: "any" }) as any;
     expect(body.query.status.option).toBe("any");
   });
 });

@@ -16,8 +16,8 @@ export default function AddItem({ onAdd }: Props) {
     // Free-text search (`term`) — forgiving, like the trade site's search box.
     // `query.name`/`query.type` require an EXACT unique name / base type and
     // 400 on anything else, so exact matching is opt-in via the ⚙️ accordion.
-    const spec: QuerySpec = { onlineOnly: true, term };
-    if (corrupted) spec.corrupted = true;
+    const spec: QuerySpec = { status: "online", term };
+    if (corrupted) spec.filters = { misc_filters: { corrupted: { option: "true" } } };
     onAdd({
       id: newId(),
       label: term,

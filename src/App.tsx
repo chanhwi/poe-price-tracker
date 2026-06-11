@@ -5,6 +5,7 @@ import type { League, ParsedItem, PriceCheckResult, QuerySpec, WatchItem } from 
 import { loadLeague, loadWatchlist, newId, saveLeague, saveWatchlist } from "./lib/store";
 import { getLeagues, getTradeHost, priceCheck, setTradeHost } from "./lib/api";
 import { clearStatsCache } from "./lib/stats";
+import { clearFiltersCache } from "./lib/filters";
 import { buildSearchBody, specFromParsedItem } from "./lib/query";
 import WatchRow from "./components/WatchRow";
 import Settings from "./components/Settings";
@@ -46,7 +47,13 @@ function itemFromParsed(p: ParsedItem): WatchItem {
 }
 
 function specKey(s: QuerySpec): string {
-  return JSON.stringify({ name: s.name, type: s.type, term: s.term, rarity: s.rarity, corrupted: s.corrupted });
+  return JSON.stringify({
+    name: s.name,
+    type: s.type,
+    term: s.term,
+    rarity: s.filters?.type_filters?.rarity?.option,
+    corrupted: s.filters?.misc_filters?.corrupted?.option,
+  });
 }
 
 function App() {
@@ -98,6 +105,7 @@ function App() {
     }
     setHostState(h);
     clearStatsCache();
+    clearFiltersCache();
     getLeagues().then(setLeagues).catch(() => setLeagues([]));
   }
 

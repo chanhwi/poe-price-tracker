@@ -1,20 +1,22 @@
-import type { ParsedItem, QuerySpec } from "./types";
+import type { FilterValue, ParsedItem, QuerySpec } from "./types";
 
 /**
  * Build a sensible default QuerySpec from a parsed clipboard item
- * (DESIGN.md §4: smart defaults, toggles off). Registration rule:
- *   unique -> by name, rare/normal -> by base type, currency/gem -> by name,
- *   magic/other -> free-text term (user refines later).
+ * (DESIGN.md §4). Registration rule: unique -> by name, rare/normal -> by base
+ * type, currency/gem -> by name, magic/other -> free-text term. Corrupted items
+ * constrain corruption; normal items leave it unset ("any").
  */
 export function specFromParsedItem(item: ParsedItem): QuerySpec {
-  // Only constrain corruption when the item IS corrupted, so a normal item's
-  // default search returns both corrupted and non-corrupted listings ("any").
-  const spec: QuerySpec = { onlineOnly: true };
-  if (item.corrupted) spec.corrupted = true;
+  const spec: QuerySpec = { status: "online" };
+  const filters: NonNullable<QuerySpec["filters"]> = {};
+  const set = (g: string, f: string, v: FilterValue) => {
+    filters[g] = { ...(filters[g] ?? {}), [f]: v };
+  };
+
   switch (item.rarity) {
     case "unique":
       if (item.name) spec.name = item.name;
-      spec.rarity = "unique";
+      set("type_filters", "rarity", { option: "unique" });
       break;
     case "rare":
     case "normal":
@@ -23,52 +25,46 @@ export function specFromParsedItem(item: ParsedItem): QuerySpec {
     case "currency":
     case "gem":
     case "divination_card":
-      if (item.name) spec.type = item.name; // their name is the trade "type"
+      if (item.name) spec.type = item.name;
       break;
-    default: // magic / other: base is embedded in the name -> free text
+    default: // magic / other
       if (item.register_term) spec.term = item.register_term;
   }
+
+  if (item.corrupted) set("misc_filters", "corrupted", { option: "true" });
+
+  if (Object.keys(filters).length) spec.filters = filters;
   return spec;
 }
 
 /** Compile a QuerySpec into the trade2 search POST body `{ query, sort }`. */
 export function buildSearchBody(spec: QuerySpec): Record<string, unknown> {
   const query: Record<string, unknown> = {
-    status: { option: spec.onlineOnly === false ? "any" : "online" },
+    status: { option: spec.status ?? "online" },
   };
   if (spec.name) query.name = spec.name;
   if (spec.type) query.type = spec.type;
   if (spec.term) query.term = spec.term;
 
-  const filters: Record<string, unknown> = {};
-
-  const typeFilters: Record<string, unknown> = {};
-  if (spec.category) typeFilters.category = { option: spec.category };
-  if (spec.rarity) typeFilters.rarity = { option: spec.rarity };
-  if (Object.keys(typeFilters).length) filters.type_filters = { filters: typeFilters };
-
-  const miscFilters: Record<string, unknown> = {};
-  if (spec.corrupted !== undefined) {
-    miscFilters.corrupted = { option: spec.corrupted ? "true" : "false" };
+  if (spec.filters) {
+    const out: Record<string, unknown> = {};
+    for (const [group, fmap] of Object.entries(spec.filters)) {
+      const filters: Record<string, unknown> = {};
+      for (const [fid, v] of Object.entries(fmap)) {
+        const val = filterValue(v);
+        if (val) filters[fid] = val;
+      }
+      if (Object.keys(filters).length) out[group] = { filters };
+    }
+    if (Object.keys(out).length) query.filters = out;
   }
-  if (spec.minIlvl !== undefined || spec.maxIlvl !== undefined) {
-    miscFilters.ilvl = pruneRange(spec.minIlvl, spec.maxIlvl);
-  }
-  if (spec.minQuality !== undefined) miscFilters.quality = { min: spec.minQuality };
-  if (Object.keys(miscFilters).length) filters.misc_filters = { filters: miscFilters };
-
-  if (Object.keys(filters).length) query.filters = filters;
 
   const activeStats = (spec.stats ?? []).filter((s) => !s.disabled);
   if (activeStats.length) {
     query.stats = [
       {
         type: "and",
-        filters: activeStats.map((s) => ({
-          id: s.id,
-          value: pruneRange(s.min, s.max),
-          disabled: false,
-        })),
+        filters: activeStats.map((s) => ({ id: s.id, value: range(s.min, s.max), disabled: false })),
       },
     ];
   }
@@ -76,9 +72,15 @@ export function buildSearchBody(spec: QuerySpec): Record<string, unknown> {
   return { query, sort: { price: "asc" } };
 }
 
-function pruneRange(min?: number, max?: number): Record<string, number> {
-  const v: Record<string, number> = {};
-  if (min !== undefined) v.min = min;
-  if (max !== undefined) v.max = max;
-  return v;
+function filterValue(v: FilterValue): Record<string, unknown> | undefined {
+  if (v.option !== undefined && v.option !== "") return { option: v.option };
+  if (v.min !== undefined || v.max !== undefined) return range(v.min, v.max);
+  return undefined;
+}
+
+function range(min?: number, max?: number): Record<string, number> {
+  const r: Record<string, number> = {};
+  if (min !== undefined) r.min = min;
+  if (max !== undefined) r.max = max;
+  return r;
 }

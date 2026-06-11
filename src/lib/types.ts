@@ -59,19 +59,40 @@ export interface StatFilter {
   disabled?: boolean;
 }
 
-/** High-level, UI-friendly description of a search; compiled to a trade2 body. */
+/** A single filter value: a range (min/max) or a selected option id. */
+export interface FilterValue {
+  min?: number;
+  max?: number;
+  option?: string;
+}
+
+/** High-level search spec compiled to a trade2 body. `filters` mirrors the
+ * trade2 `query.filters.{group}.filters.{id}` structure, driven by the
+ * data/filters schema (full filter set, not a hand-picked subset). `status`
+ * maps to `query.status.option`. */
 export interface QuerySpec {
   name?: string; // unique name -> query.name
   type?: string; // base type -> query.type
   term?: string; // free text -> query.term
-  rarity?: string; // type_filters.rarity.option
-  category?: string; // type_filters.category.option
-  corrupted?: boolean; // misc_filters.corrupted
-  minIlvl?: number;
-  maxIlvl?: number;
-  minQuality?: number;
-  onlineOnly?: boolean; // status online vs any (default online)
+  status?: string; // query.status.option (online/any/...)
+  filters?: { [group: string]: { [filterId: string]: FilterValue } };
   stats?: StatFilter[];
+}
+
+// --- data/filters schema (drives the dynamic filter builder) ---
+export interface FilterOption {
+  id: string | null;
+  text: string;
+}
+export interface FilterDef {
+  id: string;
+  text?: string;
+  option?: { options: FilterOption[] };
+}
+export interface FilterGroupSchema {
+  id: string;
+  title?: string;
+  filters: FilterDef[];
 }
 
 /** One price reading saved to history. */

@@ -376,3 +376,33 @@ button:disabled {
     border-color: #333;
   }
 }
+
+/* --- dynamic filter groups --- */
+.fb-group {
+  margin-top: 8px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+.fb-group > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85em;
+  padding: 2px 0;
+}
+.fb-group[open] > summary {
+  margin-bottom: 6px;
+}
+.fb-minmax {
+  display: flex;
+  gap: 4px;
+}
+.fb-minmax input {
+  width: 100%;
+  min-width: 0;
+}
+@media (prefers-color-scheme: dark) {
+  .fb-group {
+    border-color: #383838;
+  }
+}
