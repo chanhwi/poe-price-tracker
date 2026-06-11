@@ -1,3 +1,4 @@
+mod item;
 mod trade;
 
 use trade::TradeClient;
@@ -15,6 +16,7 @@ pub fn run() {
         .manage(TradeClient::new())
         .invoke_handler(tauri::generate_handler![
             greet,
+            item::parse_item_text,
             trade::commands::get_leagues,
             trade::commands::price_check,
             trade::commands::set_poesessid,
