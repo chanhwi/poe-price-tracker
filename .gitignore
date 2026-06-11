@@ -9,7 +9,6 @@ dist-ssr/
 src-tauri/target/
 src-tauri/gen/
 **/*.rs.bk
-Cargo.lock
 
 # --- Logs ---
 *.log
