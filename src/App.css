@@ -24,8 +24,8 @@
   --danger: #d63e3e;
   --success: #1ea41e;
   --r: 1px;
-  --font-header: "Fontin SmallCaps", "Fontin", "Cinzel", "Constantia", "Garamond", "Georgia", serif;
-  --font-body: "Fontin", "Optima", "Palatino", "Garamond", "Georgia", serif;
+  --font-header: "Inter", "Segoe UI", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, Avenir, Helvetica, Arial, sans-serif;
   --bevel: inset 0 0 0 1px var(--border-outer), inset 0 1px 0 rgba(212, 175, 55, 0.1),
     0 2px 4px rgba(0, 0, 0, 0.6);
 
@@ -582,8 +582,8 @@ button:disabled {
   white-space: nowrap;
 }
 .cur-icon {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
   vertical-align: middle;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7));
@@ -593,8 +593,8 @@ button:disabled {
   font-size: 0.92em;
 }
 .rp-price .cur-icon {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
 }
 
 /* ---------------- scrollbars ---------------- */
