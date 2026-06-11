@@ -5,12 +5,15 @@ import { loadItems } from "../lib/items";
 interface Props {
   initial?: string;
   placeholder?: string;
-  /** Picked a suggestion -> exact name/base; typed + Enter with no match -> term. */
+  /** Apply typed text (as term) on blur too — used when editing an existing
+   * item's search so edits stick without pressing Enter. */
+  applyOnBlur?: boolean;
   onApply: (sel: { name?: string; type?: string; term?: string }) => void;
 }
 
-export default function ItemSearch({ initial = "", placeholder, onApply }: Props) {
+export default function ItemSearch({ initial = "", placeholder, applyOnBlur = false, onApply }: Props) {
   const [q, setQ] = useState(initial);
+  const [applied, setApplied] = useState(initial);
   const [open, setOpen] = useState(false);
   const [all, setAll] = useState<ItemOption[]>([]);
 
@@ -34,6 +37,7 @@ export default function ItemSearch({ initial = "", placeholder, onApply }: Props
 
   function pick(o: ItemOption) {
     setQ(o.display);
+    setApplied(o.display);
     setOpen(false);
     if (o.unique && o.name) onApply({ name: o.name });
     else onApply({ type: o.base });
@@ -42,7 +46,10 @@ export default function ItemSearch({ initial = "", placeholder, onApply }: Props
   function applyRaw() {
     const t = q.trim();
     setOpen(false);
-    if (t) onApply({ term: t }); // fallback free-text search
+    if (t) {
+      setApplied(t);
+      onApply({ term: t });
+    }
   }
 
   return (
@@ -55,7 +62,12 @@ export default function ItemSearch({ initial = "", placeholder, onApply }: Props
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() =>
+          setTimeout(() => {
+            setOpen(false);
+            if (applyOnBlur && q.trim() && q.trim() !== applied.trim()) applyRaw();
+          }, 150)
+        }
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();

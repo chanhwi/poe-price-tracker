@@ -80,8 +80,10 @@ pub struct PricePoint {
     pub account: Option<String>,
     /// Item display name (unique name / full type line / base type).
     pub item: Option<String>,
-    /// Item's fixed/rolled mod lines (implicit + explicit).
-    pub mods: Vec<String>,
+    /// Implicit mods (고정옵션) — shown above the divider, like the trade site.
+    pub implicit: Vec<String>,
+    /// Explicit mods (rolled affixes) — shown below the divider.
+    pub explicit: Vec<String>,
 }
 
 /// Result of a price check: total matches, the sampled priced listings, and a

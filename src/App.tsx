@@ -62,7 +62,7 @@ function App() {
   const [tab, setTab] = useState<Tab>("all");
   const [league, setLeague] = useState<string>(() => loadLeague());
   const [leagues, setLeagues] = useState<League[]>([]);
-  const [host, setHostState] = useState<string>("www.pathofexile.com");
+  const [host, setHostState] = useState<string>("poe.game.daum.net");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -76,13 +76,17 @@ function App() {
   useEffect(() => {
     saveLeague(league);
   }, [league]);
+
+  function defaultLeague(ls: League[]) {
+    setLeague((prev) => (ls.some((l) => l.id === prev) ? prev : ls[0]?.id ?? prev));
+  }
+
   useEffect(() => {
     getTradeHost().then(setHostState).catch(() => {});
     getLeagues()
       .then((ls) => {
         setLeagues(ls);
-        // Default to the current league (first = e.g. "Runes of Aldur"), not Standard.
-        setLeague((prev) => (ls.some((l) => l.id === prev) ? prev : ls[0]?.id ?? prev));
+        defaultLeague(ls);
       })
       .catch(() => {});
   }, []);
@@ -117,7 +121,7 @@ function App() {
     getLeagues()
       .then((ls) => {
         setLeagues(ls);
-        setLeague((prev) => (ls.some((l) => l.id === prev) ? prev : ls[0]?.id ?? prev));
+        defaultLeague(ls);
       })
       .catch(() => setLeagues([]));
   }
@@ -127,7 +131,7 @@ function App() {
       const it = itemsRef.current.find((i) => i.id === id);
       if (!it) return;
       setBusyId(id);
-      setSelectedId(id); // show this item's results in the right panel
+      setSelectedId(id);
       try {
         const res = await priceCheck(league, buildSearchBody(it.spec));
         setItems((prev) => prev.map((i) => (i.id === id ? applyResult(i, res) : i)));
@@ -157,30 +161,21 @@ function App() {
     <main className="container">
       <header className="topbar">
         <h1>PoE Price Tracker</h1>
-        <select value={league} onChange={(e) => setLeague(e.currentTarget.value)} title="리그">
-          {leagues.length === 0 && <option value={league}>{league}</option>}
-          {leagues.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.text ?? l.id}
-            </option>
-          ))}
-        </select>
+        <nav className="tabs">
+          <button className={tab === "all" ? "active" : ""} onClick={() => setTab("all")}>
+            전체
+          </button>
+          <button className={tab === "fav" ? "active" : ""} onClick={() => setTab("fav")}>
+            즐겨찾기
+          </button>
+          <button className={tab === "settings" ? "active" : ""} onClick={() => setTab("settings")}>
+            설정
+          </button>
+        </nav>
       </header>
 
-      <nav className="tabs">
-        <button className={tab === "all" ? "active" : ""} onClick={() => setTab("all")}>
-          전체
-        </button>
-        <button className={tab === "fav" ? "active" : ""} onClick={() => setTab("fav")}>
-          즐겨찾기
-        </button>
-        <button className={tab === "settings" ? "active" : ""} onClick={() => setTab("settings")}>
-          설정
-        </button>
-      </nav>
-
       {tab === "settings" ? (
-        <Settings host={host} onChangeHost={changeHost} />
+        <Settings host={host} onChangeHost={changeHost} league={league} leagues={leagues} onChangeLeague={setLeague} />
       ) : (
         <div className="main-split">
           <div className="left-pane">

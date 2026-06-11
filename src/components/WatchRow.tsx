@@ -34,7 +34,7 @@ export default function WatchRow({
           {item.favorite ? "★" : "☆"}
         </button>
         <span className="label" title="클릭하면 결과 표시" onClick={() => onSelect(item.id)} style={{ cursor: "pointer" }}>
-          {item.label}
+          {item.spec.name ?? item.spec.type ?? item.spec.term ?? item.label}
         </span>
         <span className="price">{formatEntry(last)}</span>
         <span

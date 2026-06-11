@@ -50,7 +50,7 @@ export default function FilterBuilder({ spec, onChange }: Props) {
   return (
     <div className="filter-builder">
       <div className="fb-search-row">
-        <ItemSearch initial={current} placeholder="아이템 이름/베이스 검색" onApply={applySearch} />
+        <ItemSearch initial={current} applyOnBlur placeholder="아이템 이름/베이스 검색" onApply={applySearch} />
         {statusOptions.length > 0 && (
           <select
             value={spec.status ?? "securable"}

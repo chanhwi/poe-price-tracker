@@ -33,7 +33,7 @@
 .tabs {
   display: flex;
   gap: 6px;
-  margin: 12px 0;
+  margin: 0;
 }
 .tabs button {
   padding: 6px 14px;
@@ -472,5 +472,23 @@ button:disabled {
   }
   .search-results li:hover {
     background: #33405a;
+  }
+}
+
+/* implicit vs explicit mods (거래소처럼 구분선) */
+.rp-implicit li {
+  color: #5e7fc0;
+}
+.rp-div {
+  border-top: 1px dashed #ccc;
+  margin: 3px 0;
+  height: 0;
+}
+@media (prefers-color-scheme: dark) {
+  .rp-implicit li {
+    color: #8fa9e0;
+  }
+  .rp-div {
+    border-color: #444;
   }
 }

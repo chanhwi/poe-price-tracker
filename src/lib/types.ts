@@ -29,7 +29,8 @@ export interface PricePoint {
   currency: string;
   account: string | null;
   item: string | null;
-  mods: string[];
+  implicit: string[];
+  explicit: string[];
 }
 
 /** Mirror of Rust `trade::model::PriceCheckResult`. */

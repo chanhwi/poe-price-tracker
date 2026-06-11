@@ -62,7 +62,7 @@ impl TradeClient {
             .expect("failed to build reqwest client");
         Self {
             http,
-            host: RwLock::new("www.pathofexile.com".to_string()),
+            host: RwLock::new("poe.game.daum.net".to_string()), // 한국(한글) 기본
             realm: "poe2".to_string(),
             poesessid: RwLock::new(None),
             gate: Mutex::new(GateState {
@@ -289,7 +289,8 @@ impl TradeClient {
                     currency: p.currency.clone()?,
                     account: l.account.as_ref().and_then(|a| a.name.clone()),
                     item: r.item.as_ref().and_then(item_display_name),
-                    mods: r.item.as_ref().map(item_mods).unwrap_or_default(),
+                    implicit: r.item.as_ref().map(|v| item_arr(v, "implicitMods")).unwrap_or_default(),
+                    explicit: r.item.as_ref().map(|v| item_arr(v, "explicitMods")).unwrap_or_default(),
                 })
             })
             .collect();
@@ -329,17 +330,12 @@ fn item_display_name(v: &serde_json::Value) -> Option<String> {
     s("name").or_else(|| s("typeLine")).or_else(|| s("baseType"))
 }
 
-/// The item's fixed/rolled mod lines (implicit + explicit), for display.
-fn item_mods(v: &serde_json::Value) -> Vec<String> {
-    let arr = |k: &str| -> Vec<String> {
-        v.get(k)
-            .and_then(|x| x.as_array())
-            .map(|a| a.iter().filter_map(|m| m.as_str().map(|s| s.to_string())).collect())
-            .unwrap_or_default()
-    };
-    let mut out = arr("implicitMods");
-    out.extend(arr("explicitMods"));
-    out
+/// Extract a string-array mod field (e.g. "implicitMods" / "explicitMods").
+fn item_arr(v: &serde_json::Value, key: &str) -> Vec<String> {
+    v.get(key)
+        .and_then(|x| x.as_array())
+        .map(|a| a.iter().filter_map(|m| m.as_str().map(|s| s.to_string())).collect())
+        .unwrap_or_default()
 }
 
 /// Median amount within the most common currency among the sampled listings.
@@ -372,7 +368,8 @@ fn compute_median(points: &[PricePoint]) -> Option<PricePoint> {
         currency: dominant,
         account: None,
         item: None,
-        mods: Vec::new(),
+        implicit: Vec::new(),
+        explicit: Vec::new(),
     })
 }
 
