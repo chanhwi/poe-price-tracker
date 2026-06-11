@@ -43,3 +43,13 @@ export async function loadStats(): Promise<StatOption[]> {
   }
   return fetchAndStore();
 }
+
+/** Drop the cached catalogue (e.g. after switching region/language). */
+export function clearStatsCache(): void {
+  memo = null;
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* ignore */
+  }
+}

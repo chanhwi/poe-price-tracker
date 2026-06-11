@@ -1,9 +1,11 @@
-//! Embedded pathofexile.com login + POESESSID capture (DESIGN.md §2 / Section 6).
+//! Embedded login + POESESSID capture + trade-host (region) config.
 //!
-//! Flow: open a webview to the official login page; after the user logs in,
-//! read the HTTP-only POESESSID cookie from that webview's cookie store and
-//! inject it into the (separate) reqwest client. Persisted to the app's local
-//! data dir so it survives restarts.
+//! The trade host selects the language realm so item names match the user's game
+//! (www.pathofexile.com = English, poe.game.daum.net = Korean, ...). POESESSID is
+//! host-bound, so switching hosts clears it.
+//!
+//! NOTE: POESESSID is persisted plaintext under the per-user app-data dir (a
+//! personal tool; per-user-profile scoped). Consider DPAPI/keyring for hardening.
 
 use std::path::PathBuf;
 
@@ -12,18 +14,17 @@ use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use crate::trade::TradeClient;
 
 const LOGIN_LABEL: &str = "poe-login";
-const LOGIN_URL: &str = "https://www.pathofexile.com/login";
-const COOKIE_HOST: &str = "https://www.pathofexile.com";
 const POESESSID: &str = "POESESSID";
 
-/// Open (or focus) an embedded login window pointing at pathofexile.com.
+/// Open (or focus) an embedded login window for the configured trade host.
 #[tauri::command]
-pub async fn open_login(app: AppHandle) -> Result<(), String> {
+pub async fn open_login(app: AppHandle, client: State<'_, TradeClient>) -> Result<(), String> {
     if let Some(w) = app.get_webview_window(LOGIN_LABEL) {
         let _ = w.set_focus();
         return Ok(());
     }
-    let url: tauri::Url = LOGIN_URL.parse().map_err(|e| format!("bad url: {e}"))?;
+    let login_url = format!("https://{}/login", client.host());
+    let url: tauri::Url = login_url.parse().map_err(|e| format!("bad url: {e}"))?;
     WebviewWindowBuilder::new(&app, LOGIN_LABEL, WebviewUrl::External(url))
         .title("Path of Exile 로그인 — 로그인 후 'POESESSID 가져오기'를 누르세요")
         .inner_size(900.0, 760.0)
@@ -32,37 +33,55 @@ pub async fn open_login(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Read POESESSID from the login window's cookie store, inject it into the
-/// client, persist it, and return it (or None if not logged in yet).
-/// Async so the cookie read does not deadlock the main thread on Windows.
+/// Read POESESSID from the login window's cookie store for the current host,
+/// inject it into the client, persist it, and return it.
 #[tauri::command]
 pub async fn capture_poesessid(
     app: AppHandle,
     client: State<'_, TradeClient>,
 ) -> Result<Option<String>, String> {
-    let sid = read_poesessid(&app)?;
+    let host = client.host();
+    let sid = read_poesessid(&app, &host)?;
     if let Some(ref s) = sid {
         client.set_poesessid(Some(s.clone()));
-        let _ = persist(&app, Some(s));
+        let _ = persist(&app, "poesessid", Some(s));
     }
     Ok(sid)
 }
 
-/// Clear the stored session (logout from the tool's perspective).
 #[tauri::command]
 pub fn clear_poesessid(app: AppHandle, client: State<'_, TradeClient>) -> Result<(), String> {
     client.set_poesessid(None);
-    let _ = persist(&app, None);
+    let _ = persist(&app, "poesessid", None);
     Ok(())
 }
 
-fn read_poesessid(app: &AppHandle) -> Result<Option<String>, String> {
-    // Only the login window's cookie store holds POESESSID (WebView2 gives the
-    // main window a separate store, so there is no useful fallback there).
+/// Switch the trade host/region. Clears the (host-bound) POESESSID.
+#[tauri::command]
+pub fn set_trade_host(
+    app: AppHandle,
+    client: State<'_, TradeClient>,
+    host: String,
+) -> Result<(), String> {
+    client.set_host(host.clone());
+    let _ = persist(&app, "tradehost", Some(&host));
+    client.set_poesessid(None);
+    let _ = persist(&app, "poesessid", None);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_trade_host(client: State<'_, TradeClient>) -> String {
+    client.host()
+}
+
+fn read_poesessid(app: &AppHandle, host: &str) -> Result<Option<String>, String> {
     let win = app
         .get_webview_window(LOGIN_LABEL)
         .ok_or_else(|| "login window not open — open it first".to_string())?;
-    let url: tauri::Url = COOKIE_HOST.parse().map_err(|e| format!("bad url: {e}"))?;
+    let url: tauri::Url = format!("https://{host}")
+        .parse()
+        .map_err(|e| format!("bad url: {e}"))?;
     let cookies = win.cookies_for_url(url).map_err(|e| e.to_string())?;
     Ok(cookies
         .into_iter()
@@ -70,15 +89,15 @@ fn read_poesessid(app: &AppHandle) -> Result<Option<String>, String> {
         .map(|c| c.value().to_string()))
 }
 
-fn session_file(app: &AppHandle) -> Result<PathBuf, String> {
+fn data_file(app: &AppHandle, name: &str) -> Result<PathBuf, String> {
     let dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir.join("poesessid"))
+    Ok(dir.join(name))
 }
 
-fn persist(app: &AppHandle, sid: Option<&str>) -> Result<(), String> {
-    let path = session_file(app)?;
-    match sid {
+fn persist(app: &AppHandle, name: &str, value: Option<&str>) -> Result<(), String> {
+    let path = data_file(app, name)?;
+    match value {
         Some(s) => std::fs::write(&path, s).map_err(|e| e.to_string()),
         None => {
             let _ = std::fs::remove_file(&path);
@@ -87,14 +106,24 @@ fn persist(app: &AppHandle, sid: Option<&str>) -> Result<(), String> {
     }
 }
 
-/// Load a previously persisted POESESSID into the client (call once at startup).
+fn load_file(app: &AppHandle, name: &str) -> Option<String> {
+    data_file(app, name)
+        .ok()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+/// Load a persisted POESESSID into the client at startup.
 pub fn load_persisted(app: &AppHandle, client: &TradeClient) {
-    if let Ok(path) = session_file(app) {
-        if let Ok(s) = std::fs::read_to_string(&path) {
-            let s = s.trim().to_string();
-            if !s.is_empty() {
-                client.set_poesessid(Some(s));
-            }
-        }
+    if let Some(s) = load_file(app, "poesessid") {
+        client.set_poesessid(Some(s));
+    }
+}
+
+/// Load the persisted trade host into the client at startup.
+pub fn load_host(app: &AppHandle, client: &TradeClient) {
+    if let Some(h) = load_file(app, "tradehost") {
+        client.set_host(h);
     }
 }

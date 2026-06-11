@@ -3,7 +3,8 @@ import { listen } from "@tauri-apps/api/event";
 import "./App.css";
 import type { League, ParsedItem, PriceCheckResult, QuerySpec, WatchItem } from "./lib/types";
 import { loadLeague, loadWatchlist, newId, saveLeague, saveWatchlist } from "./lib/store";
-import { getLeagues, priceCheck } from "./lib/api";
+import { getLeagues, getTradeHost, priceCheck, setTradeHost } from "./lib/api";
+import { clearStatsCache } from "./lib/stats";
 import { buildSearchBody, specFromParsedItem } from "./lib/query";
 import WatchRow from "./components/WatchRow";
 import Settings from "./components/Settings";
@@ -45,10 +46,10 @@ function App() {
   const [tab, setTab] = useState<Tab>("all");
   const [league, setLeague] = useState<string>(() => loadLeague());
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [host, setHostState] = useState<string>("www.pathofexile.com");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
 
-  // Keep a ref of items so refresh() stays stable; debounce the persist write.
   const itemsRef = useRef<WatchItem[]>(items);
   useEffect(() => {
     itemsRef.current = items;
@@ -59,6 +60,7 @@ function App() {
     saveLeague(league);
   }, [league]);
   useEffect(() => {
+    getTradeHost().then(setHostState).catch(() => {});
     getLeagues().then(setLeagues).catch(() => {});
   }, []);
 
@@ -79,6 +81,17 @@ function App() {
       un.then((f) => f());
     };
   }, []);
+
+  async function changeHost(h: string) {
+    try {
+      await setTradeHost(h);
+    } catch (e) {
+      console.error(e);
+    }
+    setHostState(h);
+    clearStatsCache(); // stat names are localized per region
+    getLeagues().then(setLeagues).catch(() => setLeagues([]));
+  }
 
   const refresh = useCallback(
     async (id: string) => {
@@ -136,7 +149,7 @@ function App() {
       </nav>
 
       {tab === "settings" ? (
-        <Settings />
+        <Settings host={host} onChangeHost={changeHost} />
       ) : (
         <>
           <AddItem onAdd={(it) => setItems((prev) => [...prev, it])} />

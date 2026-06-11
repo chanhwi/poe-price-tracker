@@ -7,6 +7,14 @@ import {
   setCaptureHotkey,
 } from "../lib/api";
 
+const REGIONS: { host: string; label: string }[] = [
+  { host: "www.pathofexile.com", label: "글로벌 (영어)" },
+  { host: "poe.game.daum.net", label: "한국 (한글)" },
+  { host: "pathofexile.tw", label: "대만 / Garena (번체)" },
+  { host: "jp.pathofexile.com", label: "일본 (日本語)" },
+  { host: "ru.pathofexile.com", label: "러시아 (Русский)" },
+];
+
 const MOD_CODES = [
   "ControlLeft",
   "ControlRight",
@@ -18,7 +26,12 @@ const MOD_CODES = [
   "MetaRight",
 ];
 
-export default function Settings() {
+interface Props {
+  host: string;
+  onChangeHost: (host: string) => void;
+}
+
+export default function Settings({ host, onChangeHost }: Props) {
   const [status, setStatus] = useState("");
   const [hotkey, setHotkey] = useState("");
   const [capturing, setCapturing] = useState(false);
@@ -57,11 +70,29 @@ export default function Settings() {
       .catch((err) => setStatus("단축키 등록 실패: " + String(err)));
   }
 
+  const knownHost = REGIONS.some((r) => r.host === host);
+
   return (
     <div className="settings">
-      <h2>세션 (POESESSID)</h2>
+      <h2>지역 / 언어</h2>
       <p style={{ opacity: 0.7 }}>
-        익명으로도 검색되지만, 로그인하면 요청 한도가 올라가고 더 안정적입니다. 게임이 아니라 홈페이지 로그인입니다.
+        게임 클라이언트 언어에 맞춰 선택하세요. 아이템 이름이 그 지역 언어로 검색됩니다. 예) 한국 클라이언트 → "한국"
+        선택 후 한글 이름으로 검색.
+      </p>
+      <select value={host} onChange={(e) => onChangeHost(e.currentTarget.value)} style={{ minWidth: 240 }}>
+        {REGIONS.map((r) => (
+          <option key={r.host} value={r.host}>
+            {r.label}
+          </option>
+        ))}
+        {!knownHost && <option value={host}>{host}</option>}
+      </select>
+      <p style={{ opacity: 0.5, fontSize: "0.85em" }}>현재 호스트: {host}</p>
+
+      <h2 style={{ marginTop: 20 }}>세션 (POESESSID)</h2>
+      <p style={{ opacity: 0.7 }}>
+        익명으로도 검색되지만, 로그인하면 요청 한도가 올라가고 더 안정적입니다. 게임이 아니라 홈페이지 로그인이며, 위에서
+        고른 지역의 사이트로 로그인됩니다.
       </p>
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         <button onClick={() => openLogin()}>① 로그인 창 열기</button>

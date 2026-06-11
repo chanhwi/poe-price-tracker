@@ -23,8 +23,9 @@ pub fn run() {
         )
         .manage(TradeClient::new())
         .setup(|app| {
-            // Restore a persisted POESESSID, then register the capture hotkey.
+            // Restore persisted host + POESESSID, then register the capture hotkey.
             let client = app.state::<TradeClient>();
+            session::load_host(app.handle(), client.inner());
             session::load_persisted(app.handle(), client.inner());
             hotkey::init(app.handle());
             Ok(())
@@ -38,6 +39,8 @@ pub fn run() {
             session::open_login,
             session::capture_poesessid,
             session::clear_poesessid,
+            session::set_trade_host,
+            session::get_trade_host,
             hotkey::set_capture_hotkey,
             hotkey::get_capture_hotkey,
         ])

@@ -14,32 +14,19 @@ const USER_AGENT: &str = "poe-price-tracker/0.1 (+https://github.com/chanhwi/poe
 /// How many cheapest listings to sample for a price check.
 const SAMPLE_SIZE: usize = 20;
 
-/// Fallback lock duration when a 429 omits a parseable `Retry-After`. Kept
-/// conservative (PoE2's worst observed search lock is 1800s) but bounded;
-/// `max_auto_wait` surfaces anything long to the caller instead of busy-waiting.
+/// Fallback lock duration when a 429 omits a parseable `Retry-After`.
 const RETRY_AFTER_FALLBACK: Duration = Duration::from_secs(300);
 
-/// Which rate-limit policy bucket a request belongs to. Search and fetch carry
-/// separate server policies, so they get separate limiters.
-///
-/// NOTE (known limitation): if the server actually meters search+fetch against a
-/// single shared IP bucket, the first fetch in a price_check is decided before
-/// it has seen the preceding search's IP usage. The per-response `-State`
-/// top-up self-corrects this after the first fetch response, and the only window
-/// at risk is the 5/10s one (a 60s lock, not the 1800s lock). Revisit (merge the
-/// "Ip" rule into a shared limiter) if 429s are observed in practice.
 #[derive(Clone, Copy)]
 enum Policy {
     Search,
     Fetch,
 }
 
-/// Serialized throttle state guarded by a single async mutex (concurrency = 1).
 struct GateState {
     search: PolicyLimiter,
     fetch: PolicyLimiter,
     last_request: Option<Instant>,
-    /// Set on a 429; no request proceeds until this passes.
     blocked_until: Option<Instant>,
 }
 
@@ -56,15 +43,14 @@ impl GateState {
 /// single serial gate that self-throttles from the server's rate-limit headers.
 pub struct TradeClient {
     http: reqwest::Client,
-    host: String,
+    /// Trade host — selects the language/region realm. Item names match the
+    /// realm's language (e.g. "www.pathofexile.com" = English,
+    /// "poe.game.daum.net" = Korean). Mutable so the user can switch regions.
+    host: RwLock<String>,
     realm: String,
     poesessid: RwLock<Option<String>>,
     gate: Mutex<GateState>,
-    /// Global floor between any two requests (politeness / anti-burst), per
-    /// DESIGN.md §6 (1.5s).
     min_interval: Duration,
-    /// If the required wait exceeds this, surface it to the caller instead of
-    /// blocking the command for minutes (e.g. a 30-min lockout).
     max_auto_wait: Duration,
 }
 
@@ -77,7 +63,7 @@ impl TradeClient {
             .expect("failed to build reqwest client");
         Self {
             http,
-            host: "www.pathofexile.com".to_string(),
+            host: RwLock::new("www.pathofexile.com".to_string()),
             realm: "poe2".to_string(),
             poesessid: RwLock::new(None),
             gate: Mutex::new(GateState {
@@ -91,15 +77,24 @@ impl TradeClient {
         }
     }
 
+    /// The configured trade host (e.g. www.pathofexile.com / poe.game.daum.net).
+    pub fn host(&self) -> String {
+        self.host.read().unwrap().clone()
+    }
+
+    pub fn set_host(&self, host: String) {
+        let host = host.trim().to_string();
+        if !host.is_empty() {
+            *self.host.write().unwrap() = host;
+        }
+    }
+
     /// Set (or clear) the POESESSID session cookie used for authenticated calls.
     pub fn set_poesessid(&self, sid: Option<String>) {
         let sid = sid.filter(|s| !s.trim().is_empty());
         *self.poesessid.write().unwrap() = sid;
     }
 
-    /// Send one request through the serial gate, applying and updating throttle
-    /// state. Holds the gate across the network call so requests are strictly
-    /// serialized (concurrency = 1).
     async fn send(
         &self,
         policy: Policy,
@@ -129,7 +124,6 @@ impl TradeClient {
         gate.limiter_mut(policy).note_send(send_at);
         gate.last_request = Some(send_at);
 
-        // Read & clone POESESSID without holding the lock across the await.
         let sid = self.poesessid.read().unwrap().clone();
         let builder = match sid {
             Some(s) => builder.header(reqwest::header::COOKIE, format!("POESESSID={s}")),
@@ -138,8 +132,6 @@ impl TradeClient {
 
         let resp = builder.send().await?;
 
-        // Reconcile usage: state-sync the windows the server reported, then count
-        // this request into any window it did NOT report (exactly-once counting).
         let rh = parse_rate_headers(resp.headers());
         let synced = gate.limiter_mut(policy).update_from_headers(&rh);
         gate.limiter_mut(policy).record_unsynced(send_at, &synced);
@@ -151,8 +143,6 @@ impl TradeClient {
         }
         if !resp.status().is_success() {
             let status = resp.status().as_u16();
-            // Collapse whitespace + truncate so the frontend renders plain text,
-            // never raw upstream HTML. (Cannot contain the request cookie.)
             let raw: String = resp.text().await.unwrap_or_default().chars().take(300).collect();
             let body = raw.split_whitespace().collect::<Vec<_>>().join(" ");
             return Err(TradeError::Status { status, body });
@@ -162,16 +152,15 @@ impl TradeClient {
 
     /// `GET /api/trade2/data/leagues` — current PoE2 leagues.
     pub async fn leagues(&self) -> Result<Vec<League>, TradeError> {
-        let url = format!("https://{}/api/trade2/data/leagues", self.host);
+        let url = format!("https://{}/api/trade2/data/leagues", self.host());
         let resp = self.send(Policy::Search, self.http.get(url.as_str())).await?;
         let parsed: LeaguesResponse = resp.json().await?;
         Ok(parsed.result)
     }
 
-    /// `GET /api/trade2/data/stats` — the flattened mod/stat filter catalogue
-    /// (for the accordion filter builder). Large + static; the frontend caches it.
+    /// `GET /api/trade2/data/stats` — the flattened mod/stat filter catalogue.
     pub async fn stats(&self) -> Result<Vec<StatOption>, TradeError> {
-        let url = format!("https://{}/api/trade2/data/stats", self.host);
+        let url = format!("https://{}/api/trade2/data/stats", self.host());
         let resp = self.send(Policy::Search, self.http.get(url.as_str())).await?;
         let parsed: StatsResponse = resp.json().await?;
         let mut out = Vec::new();
@@ -190,12 +179,10 @@ impl TradeClient {
     }
 
     /// `POST /api/trade2/search/{realm}/{league}` with a raw trade query object.
-    /// The league is pushed as a percent-encoded path segment so names with
-    /// spaces (e.g. "Runes of Aldur") or other reserved chars are handled safely.
     pub async fn search(&self, league: &str, query: Value) -> Result<SearchResponse, TradeError> {
         // No trailing slash on the base, else push() yields a `search//poe2`
         // double slash and the API 404s.
-        let mut url = reqwest::Url::parse(&format!("https://{}/api/trade2/search", self.host))
+        let mut url = reqwest::Url::parse(&format!("https://{}/api/trade2/search", self.host()))
             .map_err(|e| TradeError::Api(format!("bad base url: {e}")))?;
         url.path_segments_mut()
             .map_err(|_| TradeError::Api("base url cannot-be-a-base".into()))?
@@ -208,14 +195,13 @@ impl TradeClient {
     }
 
     /// `GET /api/trade2/fetch/{ids}?query={id}` in batches of 10. Tolerates a
-    /// per-chunk transient failure (keeps the listings already gathered) and
-    /// only hard-errors if every chunk failed; returns `(listings, partial)`.
-    /// A `RateLimited` error is always propagated (it must reach the gate/UI).
+    /// per-chunk transient failure; returns `(listings, partial)`.
     pub async fn fetch(
         &self,
         query_id: &str,
         ids: &[String],
     ) -> Result<(Vec<FetchResult>, bool), TradeError> {
+        let host = self.host();
         let mut out = Vec::new();
         let mut partial = false;
         let mut last_err: Option<TradeError> = None;
@@ -224,10 +210,9 @@ impl TradeClient {
         for chunk in ids.chunks(10) {
             attempted += 1;
             let joined = chunk.join(",");
-            // ids are hex hashes and query_id a server token — all URL-safe.
             let url = format!(
                 "https://{}/api/trade2/fetch/{}?query={}&realm={}",
-                self.host, joined, query_id, self.realm
+                host, joined, query_id, self.realm
             );
             match self.send(Policy::Fetch, self.http.get(url.as_str())).await {
                 Ok(resp) => match resp.json::<FetchResponse>().await {
@@ -274,7 +259,6 @@ impl TradeClient {
                 let l = r.listing.as_ref()?;
                 let p = l.price.as_ref()?;
                 let amount = p.amount?;
-                // Drop junk that would skew the median / dominant-currency tally.
                 if !amount.is_finite() || amount <= 0.0 {
                     return None;
                 }
@@ -304,7 +288,6 @@ impl Default for TradeClient {
 }
 
 /// Median amount within the most common currency among the sampled listings.
-/// (Cross-currency normalization is a later section — DESIGN.md §9.)
 fn compute_median(points: &[PricePoint]) -> Option<PricePoint> {
     use std::collections::HashMap;
     if points.is_empty() {
@@ -338,8 +321,7 @@ fn compute_median(points: &[PricePoint]) -> Option<PricePoint> {
 
 #[cfg(test)]
 mod live_tests {
-    //! Live integration tests against the real PoE2 trade API. Marked `#[ignore]`
-    //! so plain `cargo test` skips them. Run manually with:
+    //! Live integration tests. Run with:
     //!   cargo test -p poe-price-tracker -- --ignored --nocapture
     use super::*;
 
@@ -350,25 +332,18 @@ mod live_tests {
         let leagues = c.leagues().await.expect("leagues request failed");
         assert!(!leagues.is_empty(), "expected at least one league");
         assert!(leagues.iter().all(|l| l.realm.as_deref() == Some("poe2")));
-        println!(
-            "leagues: {:?}",
-            leagues.iter().map(|l| &l.id).collect::<Vec<_>>()
-        );
+        println!("leagues: {:?}", leagues.iter().map(|l| &l.id).collect::<Vec<_>>());
     }
 
     #[tokio::test]
     #[ignore]
     async fn live_price_check() {
         let c = TradeClient::new();
-        // Minimal valid query: cheapest online listings, no item filter.
         let query = serde_json::json!({
             "query": { "status": { "option": "online" } },
             "sort": { "price": "asc" }
         });
-        let res = c
-            .price_check("Standard", query)
-            .await
-            .expect("price_check failed");
+        let res = c.price_check("Standard", query).await.expect("price_check failed");
         println!(
             "total={}, sampled={}, partial={}, median={:?}",
             res.total, res.sampled, res.partial, res.median

@@ -19,6 +19,9 @@ export const clearPoesessid = () => invoke<void>("clear_poesessid");
 export const setPoesessid = (poesessid: string | null) =>
   invoke<void>("set_poesessid", { poesessid });
 
+export const getTradeHost = () => invoke<string>("get_trade_host");
+export const setTradeHost = (host: string) => invoke<void>("set_trade_host", { host });
+
 export const setCaptureHotkey = (accel: string) =>
   invoke<void>("set_capture_hotkey", { accel });
 export const getCaptureHotkey = () => invoke<string>("get_capture_hotkey");
