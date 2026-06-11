@@ -1,8 +1,10 @@
+mod hotkey;
 mod item;
 mod session;
 mod trade;
 
 use tauri::Manager;
+use tauri_plugin_global_shortcut::ShortcutState;
 use trade::TradeClient;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -15,11 +17,22 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        hotkey::on_capture_hotkey(app);
+                    }
+                })
+                .build(),
+        )
         .manage(TradeClient::new())
         .setup(|app| {
-            // Restore a persisted POESESSID into the client, if any.
+            // Restore a persisted POESESSID, then register the capture hotkey.
             let client = app.state::<TradeClient>();
             session::load_persisted(app.handle(), client.inner());
+            hotkey::init(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -32,6 +45,8 @@ pub fn run() {
             session::open_login,
             session::capture_poesessid,
             session::clear_poesessid,
+            hotkey::set_capture_hotkey,
+            hotkey::get_capture_hotkey,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

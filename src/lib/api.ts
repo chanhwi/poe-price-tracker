@@ -18,3 +18,7 @@ export const capturePoesessid = () => invoke<string | null>("capture_poesessid")
 export const clearPoesessid = () => invoke<void>("clear_poesessid");
 export const setPoesessid = (poesessid: string | null) =>
   invoke<void>("set_poesessid", { poesessid });
+
+export const setCaptureHotkey = (accel: string) =>
+  invoke<void>("set_capture_hotkey", { accel });
+export const getCaptureHotkey = () => invoke<string>("get_capture_hotkey");

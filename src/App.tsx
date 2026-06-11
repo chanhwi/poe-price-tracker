@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import "./App.css";
-import type { League, PriceCheckResult, WatchItem } from "./lib/types";
-import { loadLeague, loadWatchlist, saveLeague, saveWatchlist } from "./lib/store";
+import type { League, ParsedItem, PriceCheckResult, WatchItem } from "./lib/types";
+import { loadLeague, loadWatchlist, newId, saveLeague, saveWatchlist } from "./lib/store";
 import { getLeagues, priceCheck } from "./lib/api";
-import { buildSearchBody } from "./lib/query";
+import { buildSearchBody, specFromParsedItem } from "./lib/query";
 import WatchRow from "./components/WatchRow";
 import Settings from "./components/Settings";
 import AddItem from "./components/AddItem";
@@ -18,6 +19,19 @@ function applyResult(i: WatchItem, res: PriceCheckResult): WatchItem {
   return { ...i, history, lastChecked: Date.now(), lastTotal: res.total, lastPartial: res.partial };
 }
 
+function itemFromParsed(p: ParsedItem): WatchItem {
+  return {
+    id: newId(),
+    label: p.register_term ?? p.name ?? p.base_type ?? "(unknown)",
+    spec: specFromParsedItem(p),
+    favorite: false,
+    history: [],
+    lastChecked: null,
+    lastTotal: null,
+    lastPartial: false,
+  };
+}
+
 function App() {
   const [items, setItems] = useState<WatchItem[]>(() => loadWatchlist());
   const [tab, setTab] = useState<Tab>("all");
@@ -26,8 +40,7 @@ function App() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
 
-  // Keep a ref of items so the refresh callback stays stable and never reads a
-  // stale list mid "refresh all".
+  // Keep a ref of items so refresh() stays stable and never reads a stale list.
   const itemsRef = useRef<WatchItem[]>(items);
   useEffect(() => {
     itemsRef.current = items;
@@ -37,9 +50,17 @@ function App() {
     saveLeague(league);
   }, [league]);
   useEffect(() => {
-    getLeagues()
-      .then(setLeagues)
-      .catch(() => {});
+    getLeagues().then(setLeagues).catch(() => {});
+  }, []);
+
+  // An item captured via the global hotkey (Rust) arrives here.
+  useEffect(() => {
+    const un = listen<ParsedItem>("item-captured", (e) => {
+      setItems((prev) => [...prev, itemFromParsed(e.payload)]);
+    });
+    return () => {
+      un.then((f) => f());
+    };
   }, []);
 
   const refresh = useCallback(
@@ -109,7 +130,7 @@ function App() {
             </button>
           </div>
           <div className="watchlist">
-            {visible.length === 0 && <p style={{ opacity: 0.6 }}>항목이 없습니다. 위에서 추가하세요.</p>}
+            {visible.length === 0 && <p style={{ opacity: 0.6 }}>항목이 없습니다. 위에서 추가하거나 게임에서 단축키로 등록하세요.</p>}
             {visible.map((it) => (
               <WatchRow
                 key={it.id}
