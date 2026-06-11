@@ -1,9 +1,10 @@
 //! Global hotkey -> simulate Ctrl+C on the hovered in-game item -> read the
 //! clipboard -> parse -> emit `item-captured` to the frontend (DESIGN.md §9).
 //!
-//! NOTE: this does not yet gate on PoE2 being the foreground window; the item
-//! parser acts as the filter (non-item clipboard text -> no registration). A
-//! foreground-window check (Win32) is a recommended follow-up hardening.
+//! The original clipboard is snapshotted and restored so a capture never
+//! clobbers the user's clipboard. NOTE: this still does not gate on PoE2 being
+//! the foreground window (a Win32 GetForegroundWindow check is a recommended
+//! follow-up); the item parser is the filter for non-item text.
 
 use std::path::PathBuf;
 use std::sync::RwLock;
@@ -24,21 +25,34 @@ pub struct HotkeyState(pub RwLock<String>);
 /// Fired from the global-shortcut handler on key press.
 pub fn on_capture_hotkey(app: &AppHandle) {
     let app = app.clone();
-    // Do the copy + read + parse off the handler thread.
     std::thread::spawn(move || {
+        let clip = app.clipboard();
+        // Snapshot so we can restore the user's clipboard afterwards.
+        let before = clip.read_text().unwrap_or_default();
+
         if let Err(e) = simulate_copy() {
             eprintln!("enigo copy failed: {e}");
             return;
         }
-        // Give the game a moment to populate the clipboard.
-        std::thread::sleep(Duration::from_millis(120));
-        let text = match app.clipboard().read_text() {
-            Ok(t) => t,
-            Err(_) => return,
-        };
+
+        // Poll until the clipboard actually changes (the game needs a moment),
+        // rather than trusting one fixed-delay read (avoids a stale-read race).
+        let mut text = before.clone();
+        for _ in 0..6 {
+            std::thread::sleep(Duration::from_millis(50));
+            if let Ok(t) = clip.read_text() {
+                text = t;
+                if text != before {
+                    break;
+                }
+            }
+        }
+
         if let Some(parsed) = parse_item(&text) {
             let _ = app.emit("item-captured", parsed);
         }
+        // Always restore the original clipboard so we never clobber it.
+        let _ = clip.write_text(before);
     });
 }
 
@@ -57,17 +71,26 @@ fn parse_shortcut(accel: &str) -> Result<Shortcut, String> {
         .map_err(|e| format!("bad hotkey '{accel}': {e}"))
 }
 
-/// Register (or re-register) the capture hotkey, replacing the previous one.
+/// Register (or re-register) the capture hotkey transactionally: the new binding
+/// is registered BEFORE the old one is dropped, so a failed register leaves the
+/// previous working binding (and `HotkeyState`) intact.
 pub fn set_hotkey(app: &AppHandle, accel: &str) -> Result<(), String> {
     let new = parse_shortcut(accel)?;
     let gs = app.global_shortcut();
 
     if let Some(state) = app.try_state::<HotkeyState>() {
         let prev = state.0.read().unwrap().clone();
-        if let Ok(prev_sc) = parse_shortcut(&prev) {
-            let _ = gs.unregister(prev_sc);
+        if prev == accel {
+            return Ok(()); // already registered; nothing to do
         }
         gs.register(new).map_err(|e| e.to_string())?;
+        if !prev.is_empty() {
+            if let Ok(prev_sc) = parse_shortcut(&prev) {
+                if let Err(e) = gs.unregister(prev_sc) {
+                    eprintln!("failed to unregister previous hotkey '{prev}': {e}");
+                }
+            }
+        }
         *state.0.write().unwrap() = accel.to_string();
     } else {
         gs.register(new).map_err(|e| e.to_string())?;
@@ -109,7 +132,9 @@ fn load_hotkey(app: &AppHandle) -> String {
 /// Manage hotkey state + register the persisted/default hotkey (call at startup).
 pub fn init(app: &AppHandle) {
     let accel = load_hotkey(app);
-    app.manage(HotkeyState(RwLock::new(accel.clone())));
+    // Seed empty so the first set_hotkey registers without trying to unregister
+    // a never-registered key.
+    app.manage(HotkeyState(RwLock::new(String::new())));
     if let Err(e) = set_hotkey(app, &accel) {
         eprintln!("failed to register hotkey '{accel}': {e}");
     }

@@ -57,11 +57,11 @@ pub fn clear_poesessid(app: AppHandle, client: State<'_, TradeClient>) -> Result
 }
 
 fn read_poesessid(app: &AppHandle) -> Result<Option<String>, String> {
-    // Prefer the login window; fall back to the main window (shared store).
+    // Only the login window's cookie store holds POESESSID (WebView2 gives the
+    // main window a separate store, so there is no useful fallback there).
     let win = app
         .get_webview_window(LOGIN_LABEL)
-        .or_else(|| app.get_webview_window("main"))
-        .ok_or_else(|| "no webview window available".to_string())?;
+        .ok_or_else(|| "login window not open — open it first".to_string())?;
     let url: tauri::Url = COOKIE_HOST.parse().map_err(|e| format!("bad url: {e}"))?;
     let cookies = win.cookies_for_url(url).map_err(|e| e.to_string())?;
     Ok(cookies

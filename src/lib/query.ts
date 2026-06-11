@@ -7,7 +7,10 @@ import type { ParsedItem, QuerySpec } from "./types";
  *   magic/other -> free-text term (user refines later).
  */
 export function specFromParsedItem(item: ParsedItem): QuerySpec {
-  const spec: QuerySpec = { onlineOnly: true, corrupted: item.corrupted };
+  // Only constrain corruption when the item IS corrupted, so a normal item's
+  // default search returns both corrupted and non-corrupted listings ("any").
+  const spec: QuerySpec = { onlineOnly: true };
+  if (item.corrupted) spec.corrupted = true;
   switch (item.rarity) {
     case "unique":
       if (item.name) spec.name = item.name;

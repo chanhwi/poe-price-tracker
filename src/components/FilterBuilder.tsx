@@ -23,6 +23,8 @@ export default function FilterBuilder({ spec, onChange }: Props) {
 
   function setSearch(nextMode: Mode, value: string) {
     const next: QuerySpec = { ...spec, name: undefined, type: undefined, term: undefined };
+    // Drop an auto-derived 'unique' rarity when no longer searching by name.
+    if (nextMode !== "name" && next.rarity === "unique") next.rarity = undefined;
     if (nextMode === "name") next.name = value;
     else if (nextMode === "type") next.type = value;
     else next.term = value;

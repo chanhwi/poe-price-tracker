@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import "./App.css";
-import type { League, ParsedItem, PriceCheckResult, WatchItem } from "./lib/types";
+import type { League, ParsedItem, PriceCheckResult, QuerySpec, WatchItem } from "./lib/types";
 import { loadLeague, loadWatchlist, newId, saveLeague, saveWatchlist } from "./lib/store";
 import { getLeagues, priceCheck } from "./lib/api";
 import { buildSearchBody, specFromParsedItem } from "./lib/query";
@@ -11,10 +11,13 @@ import AddItem from "./components/AddItem";
 
 type Tab = "all" | "fav" | "settings";
 
+const MAX_HISTORY = 200;
+
 function applyResult(i: WatchItem, res: PriceCheckResult): WatchItem {
-  const history = i.history.slice();
+  let history = i.history.slice();
   if (res.median) {
     history.push({ ts: Date.now(), amount: res.median.amount, currency: res.median.currency });
+    if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
   }
   return { ...i, history, lastChecked: Date.now(), lastTotal: res.total, lastPartial: res.partial };
 }
@@ -32,6 +35,11 @@ function itemFromParsed(p: ParsedItem): WatchItem {
   };
 }
 
+/** Identity key for dedup (only identity-defining fields, not tunable ranges). */
+function specKey(s: QuerySpec): string {
+  return JSON.stringify({ name: s.name, type: s.type, term: s.term, rarity: s.rarity, corrupted: s.corrupted });
+}
+
 function App() {
   const [items, setItems] = useState<WatchItem[]>(() => loadWatchlist());
   const [tab, setTab] = useState<Tab>("all");
@@ -40,11 +48,12 @@ function App() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
 
-  // Keep a ref of items so refresh() stays stable and never reads a stale list.
+  // Keep a ref of items so refresh() stays stable; debounce the persist write.
   const itemsRef = useRef<WatchItem[]>(items);
   useEffect(() => {
     itemsRef.current = items;
-    saveWatchlist(items);
+    const t = setTimeout(() => saveWatchlist(items), 400);
+    return () => clearTimeout(t);
   }, [items]);
   useEffect(() => {
     saveLeague(league);
@@ -53,12 +62,20 @@ function App() {
     getLeagues().then(setLeagues).catch(() => {});
   }, []);
 
-  // An item captured via the global hotkey (Rust) arrives here.
+  // An item captured via the global hotkey (Rust) arrives here; skip duplicates.
   useEffect(() => {
+    let disposed = false;
     const un = listen<ParsedItem>("item-captured", (e) => {
-      setItems((prev) => [...prev, itemFromParsed(e.payload)]);
+      const incoming = itemFromParsed(e.payload);
+      setItems((prev) =>
+        prev.some((i) => specKey(i.spec) === specKey(incoming.spec)) ? prev : [...prev, incoming]
+      );
+    });
+    un.then((f) => {
+      if (disposed) f();
     });
     return () => {
+      disposed = true;
       un.then((f) => f());
     };
   }, []);
@@ -130,7 +147,9 @@ function App() {
             </button>
           </div>
           <div className="watchlist">
-            {visible.length === 0 && <p style={{ opacity: 0.6 }}>항목이 없습니다. 위에서 추가하거나 게임에서 단축키로 등록하세요.</p>}
+            {visible.length === 0 && (
+              <p style={{ opacity: 0.6 }}>항목이 없습니다. 위에서 추가하거나 게임에서 단축키로 등록하세요.</p>
+            )}
             {visible.map((it) => (
               <WatchRow
                 key={it.id}
