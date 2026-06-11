@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    poe2_price_tracker_lib::run()
+    poe_price_tracker_lib::run()
 }

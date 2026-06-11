@@ -1,6 +1,6 @@
-# PoE2 Price Tracker — 설계 문서
+# PoE Price Tracker — 설계 문서
 
-> 개인용 Path of Exile 2 아이템 가격 추적 데스크톱 앱.
+> 개인용 Path of Exile 가격 추적 데스크톱 앱 (현재 PoE2, PoE1 추후 지원).
 > This product isn't affiliated with or endorsed by Grinding Gear Games in any way.
 
 상태: 설계 완료, 개발 착수 단계 (2026-06).
@@ -123,7 +123,7 @@ stat id / 통화 id / 베이스 타입은 `data/{stats,static,items}`에서 매�
 ### 5.5 인증
 
 - **POESESSID 쿠키 (선택).** 헤더 `Cookie: POESESSID=<값>`. 홈페이지 로그인으로 획득(게임 무관). 익명도 search 가능, 붙이면 한도 상향(Account 버킷 추가) + 라이브서치.
-- **User-Agent**: 연락처 포함 권장 (예: `poe2-price-tracker/0.1 (contact: ...)`).
+- **User-Agent**: 연락처 포함 권장 (예: `poe-price-tracker/0.1 (contact: ...)`).
 - ⚠️ **세션 쿠키는 절대 레포에 커밋 금지** (.gitignore 처리).
 
 ---

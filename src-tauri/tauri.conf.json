@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "PoE2 Price Tracker",
+  "productName": "PoE Price Tracker",
   "version": "0.1.0",
-  "identifier": "com.poe2.pricetracker",
+  "identifier": "com.poe.pricetracker",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "PoE2 Price Tracker",
+        "title": "PoE Price Tracker",
         "width": 980,
         "height": 720
       }
