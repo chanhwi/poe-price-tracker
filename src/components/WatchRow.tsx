@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { QuerySpec, WatchItem } from "../lib/types";
-import { formatEntry, trend, trendSymbol } from "../lib/currency";
+import { formatEntry, relativeTime } from "../lib/currency";
 import FilterBuilder from "./FilterBuilder";
 
 interface Props {
@@ -26,7 +26,6 @@ export default function WatchRow({
 }: Props) {
   const [open, setOpen] = useState(false);
   const last = item.history.length ? item.history[item.history.length - 1] : null;
-  const t = trend(item.history);
 
   return (
     <div className={"watch-row-wrap" + (selected ? " selected" : "")}>
@@ -34,24 +33,22 @@ export default function WatchRow({
         <button className="star" title="즐겨찾기" onClick={() => onToggleFav(item.id)}>
           {item.favorite ? "★" : "☆"}
         </button>
-        <span
-          className="label"
-          title="클릭하면 결과 표시"
-          onClick={() => onSelect(item.id)}
-          style={{ cursor: "pointer" }}
-        >
+        <span className="label" title="클릭하면 결과 표시" onClick={() => onSelect(item.id)} style={{ cursor: "pointer" }}>
           {item.label}
         </span>
-        <span className={"price " + t.dir}>
-          {formatEntry(last)} {trendSymbol(t)}
-          {t.pct != null ? ` ${t.pct > 0 ? "+" : ""}${t.pct}%` : ""}
+        <span className="price">{formatEntry(last)}</span>
+        <span
+          className="when"
+          title={item.lastChecked ? new Date(item.lastChecked).toLocaleString() : ""}
+        >
+          {item.lastChecked ? relativeTime(item.lastChecked) : ""}
         </span>
         <span className="meta">
           {item.lastTotal != null ? `${item.lastTotal}건` : ""}
           {item.lastPartial ? " *" : ""}
         </span>
-        <button disabled={busy} onClick={() => onRefresh(item.id)} title="새로고침">
-          🔄
+        <button disabled={busy} onClick={() => onRefresh(item.id)} title="검색">
+          🔍
         </button>
         <button onClick={() => setOpen((o) => !o)} title="검색 조건">
           ⚙️

@@ -181,6 +181,28 @@ impl TradeClient {
         Ok(resp.json().await?)
     }
 
+    /// `GET /api/trade2/data/items` — base types + uniques, flattened for the
+    /// item-name autocomplete (picking gives an exact name/base, no 400).
+    pub async fn items(&self) -> Result<Vec<ItemOption>, TradeError> {
+        let url = format!("https://{}/api/trade2/data/items", self.host());
+        let resp = self.send(Policy::Search, self.http.get(url.as_str())).await?;
+        let parsed: ItemsResponse = resp.json().await?;
+        let mut out = Vec::new();
+        for g in parsed.result {
+            for e in g.entries {
+                let unique = e.flags.map(|f| f.unique).unwrap_or(false);
+                let display = e.text.clone().unwrap_or_else(|| e.base.clone());
+                out.push(ItemOption {
+                    display,
+                    name: e.name,
+                    base: e.base,
+                    unique,
+                });
+            }
+        }
+        Ok(out)
+    }
+
     pub async fn search(&self, league: &str, query: Value) -> Result<SearchResponse, TradeError> {
         let mut url = reqwest::Url::parse(&format!("https://{}/api/trade2/search", self.host()))
             .map_err(|e| TradeError::Api(format!("bad base url: {e}")))?;

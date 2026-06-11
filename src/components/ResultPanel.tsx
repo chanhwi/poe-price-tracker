@@ -1,5 +1,6 @@
 import type { WatchItem } from "../lib/types";
 import { openInBrowser } from "../lib/api";
+import { cleanMod, relativeTime } from "../lib/currency";
 
 interface Props {
   item: WatchItem | null;
@@ -24,8 +25,13 @@ export default function ResultPanel({ item }: Props) {
           </button>
         )}
       </div>
+      <div className="rp-when">
+        마지막 조회: {relativeTime(item.lastChecked)}
+        {item.lastTotal != null ? ` · 총 ${item.lastTotal}건` : ""}
+        {item.lastPartial ? " · 일부만" : ""}
+      </div>
       {results.length === 0 ? (
-        <div className="rp-empty">결과 없음 — 🔄로 검색하세요.</div>
+        <div className="rp-empty">결과 없음 — 🔍로 검색하세요.</div>
       ) : (
         <ul className="rp-list">
           {results.map((r, i) => (
@@ -39,9 +45,9 @@ export default function ResultPanel({ item }: Props) {
               {r.mods.length > 0 && (
                 <ul className="rp-mods">
                   {r.mods.slice(0, 6).map((m, j) => (
-                    <li key={j}>{m}</li>
+                    <li key={j}>{cleanMod(m)}</li>
                   ))}
-                  {r.mods.length > 6 && <li>…</li>}
+                  {r.mods.length > 6 && <li className="rp-more">+{r.mods.length - 6}…</li>}
                 </ul>
               )}
               {r.account && <div className="rp-acct">{r.account}</div>}

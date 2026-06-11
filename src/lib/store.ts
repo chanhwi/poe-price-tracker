@@ -52,7 +52,8 @@ export function saveWatchlist(items: WatchItem[]): void {
 }
 
 export function loadLeague(): string {
-  return localStorage.getItem(LEAGUE_KEY) ?? "Standard";
+  // Empty = unset; App defaults to the current league (leagues[0]) once loaded.
+  return localStorage.getItem(LEAGUE_KEY) ?? "";
 }
 
 export function saveLeague(league: string): void {

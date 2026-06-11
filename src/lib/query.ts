@@ -7,7 +7,7 @@ import type { FilterValue, ParsedItem, QuerySpec } from "./types";
  * constrain corruption; normal items leave it unset ("any").
  */
 export function specFromParsedItem(item: ParsedItem): QuerySpec {
-  const spec: QuerySpec = { status: "online" };
+  const spec: QuerySpec = { status: "securable" }; // 즉시구입 default
   const filters: NonNullable<QuerySpec["filters"]> = {};
   const set = (g: string, f: string, v: FilterValue) => {
     filters[g] = { ...(filters[g] ?? {}), [f]: v };
@@ -40,7 +40,7 @@ export function specFromParsedItem(item: ParsedItem): QuerySpec {
 /** Compile a QuerySpec into the trade2 search POST body `{ query, sort }`. */
 export function buildSearchBody(spec: QuerySpec): Record<string, unknown> {
   const query: Record<string, unknown> = {
-    status: { option: spec.status ?? "online" },
+    status: { option: spec.status ?? "securable" },
   };
   if (spec.name) query.name = spec.name;
   if (spec.type) query.type = spec.type;

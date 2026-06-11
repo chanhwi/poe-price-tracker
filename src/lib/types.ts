@@ -95,6 +95,14 @@ export interface FilterGroupSchema {
   filters: FilterDef[];
 }
 
+/** Mirror of Rust `ItemOption` (get_items) — autocomplete entry. */
+export interface ItemOption {
+  display: string;
+  name: string | null;
+  base: string;
+  unique: boolean;
+}
+
 /** One price reading saved to history. */
 export interface HistoryEntry {
   ts: number;

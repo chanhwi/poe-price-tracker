@@ -35,6 +35,7 @@ pub fn run() {
             trade::commands::get_leagues,
             trade::commands::get_stats,
             trade::commands::get_filters,
+            trade::commands::get_items,
             trade::commands::price_check,
             trade::commands::set_poesessid,
             session::open_login,

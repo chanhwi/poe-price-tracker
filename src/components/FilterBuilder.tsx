@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import type { FilterGroupSchema, QuerySpec, StatFilter } from "../lib/types";
 import { loadFilters } from "../lib/filters";
 import StatPicker from "./StatPicker";
+import ItemSearch from "./ItemSearch";
 
 interface Props {
   spec: QuerySpec;
   onChange: (spec: QuerySpec) => void;
 }
-
-type Mode = "name" | "type" | "term";
 
 function numOrUndef(v: string): number | undefined {
   const n = parseFloat(v);
@@ -21,14 +20,9 @@ export default function FilterBuilder({ spec, onChange }: Props) {
     loadFilters().then(setGroups).catch(() => {});
   }, []);
 
-  const mode: Mode = spec.name ? "name" : spec.type ? "type" : "term";
-  const termValue = spec.name ?? spec.type ?? spec.term ?? "";
-  function setSearch(nextMode: Mode, value: string) {
-    const next: QuerySpec = { ...spec, name: undefined, type: undefined, term: undefined };
-    if (nextMode === "name") next.name = value;
-    else if (nextMode === "type") next.type = value;
-    else next.term = value;
-    onChange(next);
+  const current = spec.name ?? spec.type ?? spec.term ?? "";
+  function applySearch(sel: { name?: string; type?: string; term?: string }) {
+    onChange({ ...spec, name: undefined, type: undefined, term: undefined, ...sel });
   }
 
   function getVal(group: string, fid: string) {
@@ -37,8 +31,7 @@ export default function FilterBuilder({ spec, onChange }: Props) {
   function setVal(group: string, fid: string, patch: { min?: number; max?: number; option?: string } | null) {
     const filters = { ...(spec.filters ?? {}) };
     const g = { ...(filters[group] ?? {}) };
-    const empty =
-      !patch || (patch.option === undefined && patch.min === undefined && patch.max === undefined);
+    const empty = !patch || (patch.option === undefined && patch.min === undefined && patch.max === undefined);
     if (empty) delete g[fid];
     else g[fid] = patch;
     if (Object.keys(g).length) filters[group] = g;
@@ -56,30 +49,20 @@ export default function FilterBuilder({ spec, onChange }: Props) {
 
   return (
     <div className="filter-builder">
-      <div className="fb-grid">
-        <label>
-          검색 방식
-          <select value={mode} onChange={(e) => setSearch(e.currentTarget.value as Mode, termValue)}>
-            <option value="name">이름(유니크)</option>
-            <option value="type">베이스 타입</option>
-            <option value="term">자유 텍스트</option>
-          </select>
-        </label>
-        <label>
-          검색어
-          <input value={termValue} onChange={(e) => setSearch(mode, e.currentTarget.value)} />
-        </label>
+      <div className="fb-search-row">
+        <ItemSearch initial={current} placeholder="아이템 이름/베이스 검색" onApply={applySearch} />
         {statusOptions.length > 0 && (
-          <label>
-            상태
-            <select value={spec.status ?? "online"} onChange={(e) => onChange({ ...spec, status: e.currentTarget.value })}>
-              {statusOptions.map((o) => (
-                <option key={o.id ?? "any"} value={o.id ?? "any"}>
-                  {o.text}
-                </option>
-              ))}
-            </select>
-          </label>
+          <select
+            value={spec.status ?? "securable"}
+            onChange={(e) => onChange({ ...spec, status: e.currentTarget.value })}
+            title="상태"
+          >
+            {statusOptions.map((o) => (
+              <option key={o.id ?? "any"} value={o.id ?? "any"}>
+                {o.text}
+              </option>
+            ))}
+          </select>
         )}
       </div>
 

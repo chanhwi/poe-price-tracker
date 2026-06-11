@@ -133,3 +133,44 @@ pub struct StatOption {
     pub kind: Option<String>,
     pub group: Option<String>,
 }
+
+// --- data/items (name/base autocomplete) ---
+
+#[derive(Debug, Deserialize)]
+pub struct ItemsResponse {
+    #[serde(default)]
+    pub result: Vec<ItemGroup>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ItemGroup {
+    #[serde(default)]
+    pub entries: Vec<ItemEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ItemEntry {
+    #[serde(rename = "type")]
+    pub base: String,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub flags: Option<ItemFlags>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ItemFlags {
+    #[serde(default)]
+    pub unique: bool,
+}
+
+/// Flattened item option for the autocomplete search box.
+#[derive(Debug, Clone, Serialize)]
+pub struct ItemOption {
+    pub display: String,
+    pub name: Option<String>,
+    pub base: String,
+    pub unique: bool,
+}

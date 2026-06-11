@@ -4,8 +4,6 @@ function round(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Display a price point as "12.5 divine" (native currency; cross-currency
- * normalization is a later refinement — see DESIGN.md §9). */
 export function formatPrice(p: PricePoint | null): string {
   if (!p) return "—";
   return `${round(p.amount)} ${p.currency}`;
@@ -16,37 +14,26 @@ export function formatEntry(e: HistoryEntry | null): string {
   return `${round(e.amount)} ${e.currency}`;
 }
 
-export type TrendDir = "up" | "down" | "flat" | "none";
-export interface Trend {
-  dir: TrendDir;
-  pct: number | null;
+/** Strip PoE trade mod markup: "[Resistances|Cold Resistance]" -> "Cold
+ * Resistance", "[Cold]" -> "Cold". Also flatten embedded newlines to " / ". */
+export function cleanMod(s: string): string {
+  return s
+    .replace(/\[([^\]|]+)\|([^\]]+)\]/g, "$2")
+    .replace(/\[([^\]]+)\]/g, "$1")
+    .replace(/\r?\n/g, " / ");
 }
 
-/** Trend vs the most recent prior reading in the SAME currency (so we don't
- * compare across currencies without normalization). */
-export function trend(history: HistoryEntry[]): Trend {
-  if (history.length < 2) return { dir: "none", pct: null };
-  const last = history[history.length - 1];
-  for (let i = history.length - 2; i >= 0; i--) {
-    const prev = history[i];
-    if (prev.currency === last.currency && prev.amount > 0) {
-      const pct = ((last.amount - prev.amount) / prev.amount) * 100;
-      const dir: TrendDir = pct > 0.5 ? "up" : pct < -0.5 ? "down" : "flat";
-      return { dir, pct: Math.round(pct * 10) / 10 };
-    }
-  }
-  return { dir: "none", pct: null };
-}
-
-export function trendSymbol(t: Trend): string {
-  switch (t.dir) {
-    case "up":
-      return "▲";
-    case "down":
-      return "▼";
-    case "flat":
-      return "→";
-    default:
-      return "";
-  }
+/** Relative time: "방금 전", "5분 전", "2시간 전", "3일 전", else a date. */
+export function relativeTime(ts: number | null | undefined): string {
+  if (!ts) return "—";
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec < 30) return "방금 전";
+  if (sec < 60) return `${sec}초 전`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day}일 전`;
+  return new Date(ts).toLocaleDateString();
 }

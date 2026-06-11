@@ -6,6 +6,7 @@ import { loadLeague, loadWatchlist, newId, saveLeague, saveWatchlist } from "./l
 import { getLeagues, getTradeHost, priceCheck, setTradeHost } from "./lib/api";
 import { clearStatsCache } from "./lib/stats";
 import { clearFiltersCache } from "./lib/filters";
+import { clearItemsCache } from "./lib/items";
 import { buildSearchBody, specFromParsedItem } from "./lib/query";
 import WatchRow from "./components/WatchRow";
 import Settings from "./components/Settings";
@@ -77,7 +78,13 @@ function App() {
   }, [league]);
   useEffect(() => {
     getTradeHost().then(setHostState).catch(() => {});
-    getLeagues().then(setLeagues).catch(() => {});
+    getLeagues()
+      .then((ls) => {
+        setLeagues(ls);
+        // Default to the current league (first = e.g. "Runes of Aldur"), not Standard.
+        setLeague((prev) => (ls.some((l) => l.id === prev) ? prev : ls[0]?.id ?? prev));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -106,7 +113,13 @@ function App() {
     setHostState(h);
     clearStatsCache();
     clearFiltersCache();
-    getLeagues().then(setLeagues).catch(() => setLeagues([]));
+    clearItemsCache();
+    getLeagues()
+      .then((ls) => {
+        setLeagues(ls);
+        setLeague((prev) => (ls.some((l) => l.id === prev) ? prev : ls[0]?.id ?? prev));
+      })
+      .catch(() => setLeagues([]));
   }
 
   const refresh = useCallback(
@@ -175,7 +188,7 @@ function App() {
             <div className="row" style={{ justifyContent: "space-between", margin: "8px 0" }}>
               <span style={{ opacity: 0.6 }}>{visible.length}개 항목</span>
               <button disabled={refreshingAll || visible.length === 0} onClick={refreshAll}>
-                {refreshingAll ? "새로고침 중..." : "전체 새로고침"}
+                {refreshingAll ? "검색 중..." : "전체 검색"}
               </button>
             </div>
             <div className="watchlist">

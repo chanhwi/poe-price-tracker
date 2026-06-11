@@ -54,7 +54,7 @@ describe("buildSearchBody", () => {
   it("minimal -> status + sort only, no filters", () => {
     const body = buildSearchBody({ type: "Stellar Gauntlets" }) as any;
     expect(body.query.type).toBe("Stellar Gauntlets");
-    expect(body.query.status.option).toBe("online");
+    expect(body.query.status.option).toBe("securable");
     expect(body.query.filters).toBeUndefined();
   });
 

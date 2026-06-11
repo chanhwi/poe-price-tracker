@@ -1,26 +1,24 @@
 import { useState } from "react";
 import type { QuerySpec, WatchItem } from "../lib/types";
 import { newId } from "../lib/store";
+import ItemSearch from "./ItemSearch";
 
 interface Props {
   onAdd: (item: WatchItem) => void;
 }
 
 export default function AddItem({ onAdd }: Props) {
-  const [text, setText] = useState("");
   const [corrupted, setCorrupted] = useState(false);
+  const [seq, setSeq] = useState(0); // remount ItemSearch to clear after add
 
-  function add() {
-    const term = text.trim();
-    if (!term) return;
-    // Free-text search (`term`) — forgiving, like the trade site's search box.
-    // `query.name`/`query.type` require an EXACT unique name / base type and
-    // 400 on anything else, so exact matching is opt-in via the ⚙️ accordion.
-    const spec: QuerySpec = { status: "online", term };
+  function apply(sel: { name?: string; type?: string; term?: string }) {
+    const label = sel.name ?? sel.type ?? sel.term ?? "";
+    if (!label) return;
+    const spec: QuerySpec = { status: "securable", ...sel };
     if (corrupted) spec.filters = { misc_filters: { corrupted: { option: "true" } } };
     onAdd({
       id: newId(),
-      label: term,
+      label,
       spec,
       favorite: false,
       history: [],
@@ -28,24 +26,15 @@ export default function AddItem({ onAdd }: Props) {
       lastTotal: null,
       lastPartial: false,
     });
-    setText("");
+    setSeq((s) => s + 1);
   }
 
   return (
     <div className="add-item row">
-      <input
-        value={text}
-        onChange={(e) => setText(e.currentTarget.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") add();
-        }}
-        placeholder="아이템 이름 또는 베이스 (자유 검색 — 정확 매칭은 ⚙️에서)"
-        style={{ flex: 1, minWidth: 220 }}
-      />
+      <ItemSearch key={seq} placeholder="아이템 추가 — 이름/베이스 검색 후 선택(Enter)" onApply={apply} />
       <label>
         <input type="checkbox" checked={corrupted} onChange={(e) => setCorrupted(e.currentTarget.checked)} /> 타락
       </label>
-      <button onClick={add}>추가</button>
     </div>
   );
 }

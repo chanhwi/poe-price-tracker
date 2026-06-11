@@ -2,7 +2,7 @@ use serde_json::Value;
 use tauri::State;
 
 use super::error::TradeError;
-use super::model::{League, PriceCheckResult, StatOption};
+use super::model::{ItemOption, League, PriceCheckResult, StatOption};
 use super::TradeClient;
 
 /// Fetch the current PoE2 leagues (cheap data endpoint; good connectivity test).
@@ -21,6 +21,12 @@ pub async fn get_stats(client: State<'_, TradeClient>) -> Result<Vec<StatOption>
 #[tauri::command]
 pub async fn get_filters(client: State<'_, TradeClient>) -> Result<serde_json::Value, TradeError> {
     client.filters().await
+}
+
+/// Fetch base types + uniques for the item-name autocomplete.
+#[tauri::command]
+pub async fn get_items(client: State<'_, TradeClient>) -> Result<Vec<ItemOption>, TradeError> {
+    client.items().await
 }
 
 /// Run a price check for a pre-built trade2 query object against `league`.
