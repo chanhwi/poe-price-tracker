@@ -2,13 +2,10 @@ import type { WatchItem } from "../lib/types";
 import { openInBrowser } from "../lib/api";
 import { cleanMod, relativeTime } from "../lib/currency";
 import { watchLabel as labelOf } from "../lib/store";
+import CurrencyAmount from "./CurrencyAmount";
 
 interface Props {
   item: WatchItem | null;
-}
-
-function round(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 export default function ResultPanel({ item }: Props) {
@@ -27,7 +24,7 @@ export default function ResultPanel({ item }: Props) {
         )}
       </div>
       <div className="rp-when">
-        마지막 조회: {relativeTime(item.lastChecked)}
+        마지막 조회: {item.lastChecked ? relativeTime(item.lastChecked) : "—"}
         {item.lastTotal != null ? ` · 총 ${item.lastTotal}건` : ""}
         {item.lastPartial ? " · 일부만" : ""}
       </div>
@@ -43,7 +40,7 @@ export default function ResultPanel({ item }: Props) {
                 <div className="rp-top">
                   <span className="rp-name">{r.item ?? "(이름 없음)"}</span>
                   <span className="rp-price">
-                    {round(r.amount)} {r.currency}
+                    <CurrencyAmount amount={r.amount} currency={r.currency} />
                   </span>
                 </div>
                 {imp.length > 0 && (

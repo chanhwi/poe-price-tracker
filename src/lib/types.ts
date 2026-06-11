@@ -104,6 +104,13 @@ export interface ItemOption {
   unique: boolean;
 }
 
+/** Mirror of Rust `CurrencyOption` (get_static) — currency icon + localized name. */
+export interface CurrencyOption {
+  id: string;
+  text: string;
+  image: string;
+}
+
 /** One price reading saved to history. */
 export interface HistoryEntry {
   ts: number;

@@ -203,6 +203,31 @@ impl TradeClient {
         Ok(out)
     }
 
+    /// `GET /api/trade2/data/static` — currency/fragment icons + localized
+    /// names, flattened to id -> {text, absolute image URL} for price rendering.
+    pub async fn statics(&self) -> Result<Vec<CurrencyOption>, TradeError> {
+        let url = format!("https://{}/api/trade2/data/static", self.host());
+        let resp = self.send(Policy::Search, self.http.get(url.as_str())).await?;
+        let parsed: StaticResponse = resp.json().await?;
+        let mut out = Vec::new();
+        for g in parsed.result {
+            for e in g.entries {
+                let (Some(text), Some(image)) = (e.text, e.image) else {
+                    continue;
+                };
+                // Static image paths are relative (e.g. "/gen/image/.../x.png");
+                // serve them from the PoE CDN. Leave absolute URLs untouched.
+                let image = if image.starts_with("http") {
+                    image
+                } else {
+                    format!("https://web.poecdn.com{image}")
+                };
+                out.push(CurrencyOption { id: e.id, text, image });
+            }
+        }
+        Ok(out)
+    }
+
     pub async fn search(&self, league: &str, query: Value) -> Result<SearchResponse, TradeError> {
         let mut url = reqwest::Url::parse(&format!("https://{}/api/trade2/search", self.host()))
             .map_err(|e| TradeError::Api(format!("bad base url: {e}")))?;

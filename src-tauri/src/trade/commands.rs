@@ -2,7 +2,7 @@ use serde_json::Value;
 use tauri::State;
 
 use super::error::TradeError;
-use super::model::{ItemOption, League, PriceCheckResult, StatOption};
+use super::model::{CurrencyOption, ItemOption, League, PriceCheckResult, StatOption};
 use super::TradeClient;
 
 /// Fetch the current PoE2 leagues (cheap data endpoint; good connectivity test).
@@ -27,6 +27,12 @@ pub async fn get_filters(client: State<'_, TradeClient>) -> Result<serde_json::V
 #[tauri::command]
 pub async fn get_items(client: State<'_, TradeClient>) -> Result<Vec<ItemOption>, TradeError> {
     client.items().await
+}
+
+/// Fetch currency/static icons + localized names for rendering prices as icons.
+#[tauri::command]
+pub async fn get_static(client: State<'_, TradeClient>) -> Result<Vec<CurrencyOption>, TradeError> {
+    client.statics().await
 }
 
 /// Run a price check for a pre-built trade2 query object against `league`.

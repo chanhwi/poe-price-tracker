@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { QuerySpec, WatchItem } from "../lib/types";
-import { formatEntry, relativeTime } from "../lib/currency";
+import { relativeTime } from "../lib/currency";
 import { derivedLabel, watchLabel } from "../lib/store";
 import FilterBuilder from "./FilterBuilder";
+import CurrencyAmount from "./CurrencyAmount";
 
 interface Props {
   item: WatchItem;
@@ -30,15 +31,23 @@ export default function WatchRow({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const cancelledRef = useRef(false);
   const last = item.history.length ? item.history[item.history.length - 1] : null;
 
   const shown = watchLabel(item);
 
   function beginEdit() {
+    cancelledRef.current = false;
     setDraft(shown);
     setEditing(true);
   }
   function commitEdit() {
+    // Escape sets this so the unmount-triggered onBlur doesn't save the cancelled edit.
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      setEditing(false);
+      return;
+    }
     setEditing(false);
     const v = draft.trim();
     // Empty or same as the auto name → clear the custom name (revert to auto).
@@ -51,37 +60,41 @@ export default function WatchRow({
         <button className="star" title="즐겨찾기" onClick={() => onToggleFav(item.id)}>
           {item.favorite ? "★" : "☆"}
         </button>
-        {editing ? (
-          <input
-            className="label-edit"
-            autoFocus
-            value={draft}
-            placeholder="이름 (비우면 자동)"
-            onChange={(e) => setDraft(e.currentTarget.value)}
-            onBlur={commitEdit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitEdit();
-              else if (e.key === "Escape") setEditing(false);
-            }}
-          />
-        ) : (
-          <span
-            className="label"
-            title="클릭=결과 보기 · 더블클릭/✏️=이름 변경"
-            onClick={() => onSelect(item.id)}
-            onDoubleClick={beginEdit}
-            style={{ cursor: "pointer" }}
-          >
-            {shown}
-            {item.displayName && <span className="label-custom" title="사용자 지정 이름"> ✎</span>}
-          </span>
-        )}
-        {!editing && (
-          <button className="rename" onClick={beginEdit} title="이름 변경">
-            ✏️
-          </button>
-        )}
-        <span className="price">{formatEntry(last)}</span>
+        <span className="label-wrap">
+          {editing ? (
+            <input
+              className="label-edit"
+              autoFocus
+              value={draft}
+              placeholder="이름 (비우면 자동)"
+              onChange={(e) => setDraft(e.currentTarget.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitEdit();
+                else if (e.key === "Escape") setEditing(false);
+              }}
+            />
+          ) : (
+            <>
+              <span
+                className="label"
+                title="클릭=결과 보기 · 더블클릭/✏️=이름 변경"
+                onClick={() => onSelect(item.id)}
+                onDoubleClick={beginEdit}
+                style={{ cursor: "pointer" }}
+              >
+                {shown}
+                {item.displayName && <span className="label-custom" title="사용자 지정 이름"> ✎</span>}
+              </span>
+              <button className="rename" onClick={beginEdit} title="이름 변경">
+                ✏️
+              </button>
+            </>
+          )}
+        </span>
+        <span className="price">
+          {last ? <CurrencyAmount amount={last.amount} currency={last.currency} /> : "—"}
+        </span>
         <span
           className="when"
           title={item.lastChecked ? new Date(item.lastChecked).toLocaleString() : ""}

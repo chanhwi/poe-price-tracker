@@ -7,11 +7,13 @@ import { getLeagues, getTradeHost, priceCheck, setTradeHost } from "./lib/api";
 import { clearStatsCache } from "./lib/stats";
 import { clearFiltersCache } from "./lib/filters";
 import { clearItemsCache } from "./lib/items";
+import { clearStaticCache, loadStatic, type CurrencyMap } from "./lib/static";
 import { buildSearchBody, specFromParsedItem } from "./lib/query";
 import WatchRow from "./components/WatchRow";
 import Settings from "./components/Settings";
 import AddItem from "./components/AddItem";
 import ResultPanel from "./components/ResultPanel";
+import { CurrencyContext } from "./components/CurrencyAmount";
 
 type Tab = "all" | "fav" | "settings";
 
@@ -66,6 +68,8 @@ function App() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [currencyMap, setCurrencyMap] = useState<CurrencyMap>({});
+  const [, setTick] = useState(0);
 
   const itemsRef = useRef<WatchItem[]>(items);
   useEffect(() => {
@@ -89,6 +93,13 @@ function App() {
         defaultLeague(ls);
       })
       .catch(() => {});
+    loadStatic().then(setCurrencyMap).catch((e) => console.warn("loadStatic failed:", e));
+  }, []);
+
+  // Re-render every minute so relative timestamps ("3분 전") stay current.
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 60000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -118,6 +129,13 @@ function App() {
     clearStatsCache();
     clearFiltersCache();
     clearItemsCache();
+    clearStaticCache();
+    loadStatic()
+      .then(setCurrencyMap)
+      .catch((e) => {
+        console.warn("loadStatic failed:", e);
+        setCurrencyMap({});
+      });
     getLeagues()
       .then((ls) => {
         setLeagues(ls);
@@ -158,6 +176,7 @@ function App() {
   const selectedItem = items.find((i) => i.id === selectedId) ?? null;
 
   return (
+    <CurrencyContext.Provider value={currencyMap}>
     <main className="container">
       <header className="topbar">
         <h1>PoE Price Tracker</h1>
@@ -221,6 +240,7 @@ function App() {
         </div>
       )}
     </main>
+    </CurrencyContext.Provider>
   );
 }
 

@@ -176,3 +176,35 @@ pub struct ItemOption {
     pub base: String,
     pub unique: bool,
 }
+
+// --- data/static (currency icons + localized names) ---
+
+#[derive(Debug, Deserialize)]
+pub struct StaticResponse {
+    #[serde(default)]
+    pub result: Vec<StaticGroup>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StaticGroup {
+    #[serde(default)]
+    pub entries: Vec<StaticEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StaticEntry {
+    pub id: String,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub image: Option<String>,
+}
+
+/// Flattened static option: currency/fragment id -> localized name + absolute
+/// icon URL. Used to render prices as icons (e.g. "exalted" -> 엑잘티드 오브 icon).
+#[derive(Debug, Clone, Serialize)]
+pub struct CurrencyOption {
+    pub id: String,
+    pub text: String,
+    pub image: String,
+}
