@@ -1,3 +1,7 @@
+mod trade;
+
+use trade::TradeClient;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -8,7 +12,13 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .manage(TradeClient::new())
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            trade::commands::get_leagues,
+            trade::commands::price_check,
+            trade::commands::set_poesessid,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
