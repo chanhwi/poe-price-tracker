@@ -208,6 +208,9 @@ function App() {
                   onSpecChange={(id, spec) =>
                     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, spec } : i)))
                   }
+                  onRename={(id, name) =>
+                    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, displayName: name } : i)))
+                  }
                 />
               ))}
             </div>

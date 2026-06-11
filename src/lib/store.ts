@@ -20,6 +20,7 @@ function normalizeWatchItem(x: unknown): WatchItem | null {
   return {
     id: o.id,
     label: typeof o.label === "string" ? o.label : "(unknown)",
+    displayName: typeof o.displayName === "string" && o.displayName ? o.displayName : undefined,
     spec: o.spec as QuerySpec,
     favorite: o.favorite === true,
     history,
@@ -62,6 +63,16 @@ export function saveLeague(league: string): void {
   } catch {
     /* ignore */
   }
+}
+
+/** Auto name derived from the search spec (no custom name applied). */
+export function derivedLabel(item: WatchItem): string {
+  return item.spec.name ?? item.spec.type ?? item.spec.term ?? item.label;
+}
+
+/** Name shown in the UI: user's custom name if set, else the auto name. */
+export function watchLabel(item: WatchItem): string {
+  return item.displayName ?? derivedLabel(item);
 }
 
 export function newId(): string {

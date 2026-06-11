@@ -1,6 +1,7 @@
 import type { WatchItem } from "../lib/types";
 import { openInBrowser } from "../lib/api";
 import { cleanMod, relativeTime } from "../lib/currency";
+import { watchLabel as labelOf } from "../lib/store";
 
 interface Props {
   item: WatchItem | null;
@@ -8,10 +9,6 @@ interface Props {
 
 function round(n: number): number {
   return Math.round(n * 100) / 100;
-}
-
-function labelOf(item: WatchItem): string {
-  return item.spec.name ?? item.spec.type ?? item.spec.term ?? item.label;
 }
 
 export default function ResultPanel({ item }: Props) {

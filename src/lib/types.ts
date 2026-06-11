@@ -115,6 +115,9 @@ export interface HistoryEntry {
 export interface WatchItem {
   id: string;
   label: string;
+  /** User-chosen custom display name. When set, overrides the auto label
+   * derived from the search spec. Cleared (undefined) reverts to the auto name. */
+  displayName?: string;
   spec: QuerySpec;
   favorite: boolean;
   history: HistoryEntry[];

@@ -127,6 +127,26 @@ button:disabled {
   padding: 4px 8px;
   box-shadow: none;
 }
+.watch-row .rename {
+  background: transparent;
+  border: none;
+  opacity: 0.35;
+  font-size: 0.85em;
+  padding: 2px 4px;
+}
+.watch-row .rename:hover {
+  opacity: 1;
+}
+.watch-row .label-edit {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  padding: 3px 6px;
+}
+.label-custom {
+  opacity: 0.4;
+  font-size: 0.8em;
+}
 
 .accordion {
   border-top: 1px dashed #e0e0e0;
