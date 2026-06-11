@@ -1,116 +1,189 @@
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafb);
-}
 :root {
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1a1a1a;
   background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 .container {
-  margin: 0;
-  padding-top: 10vh;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px;
+  text-align: left;
+}
+
+.topbar {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.topbar h1 {
+  font-size: 1.4rem;
+  margin: 0;
+  text-align: left;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0;
 }
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
+.tabs button {
+  padding: 6px 14px;
+  background: transparent;
+  box-shadow: none;
+  border: 1px solid #ccc;
+}
+.tabs button.active {
+  background: #396cd8;
+  color: #fff;
+  border-color: #396cd8;
 }
 
 .row {
   display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
+  align-items: center;
 }
 
 input,
-button {
+button,
+select {
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  font-size: 0.95em;
   font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+  background: #fff;
+  color: #1a1a1a;
 }
-
 button {
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
-
-button:hover {
+button:hover:not(:disabled) {
   border-color: #396cd8;
 }
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
-input,
-button {
-  outline: none;
+.watchlist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.watch-row-wrap {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+}
+.watch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+}
+.watch-row .star {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  font-size: 1.1rem;
+  padding: 2px 4px;
+  color: #e6a700;
+}
+.watch-row .label {
+  flex: 1;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.watch-row .price {
+  min-width: 140px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.watch-row .price.up {
+  color: #c0392b;
+}
+.watch-row .price.down {
+  color: #27ae60;
+}
+.watch-row .meta {
+  min-width: 56px;
+  text-align: right;
+  opacity: 0.6;
+  font-size: 0.85em;
+}
+.watch-row button {
+  padding: 4px 8px;
+  box-shadow: none;
 }
 
-#greet-input {
-  margin-right: 5px;
+.accordion {
+  border-top: 1px dashed #e0e0e0;
+  padding: 8px 10px;
+}
+.accordion pre {
+  margin: 0;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.add-item {
+  margin-bottom: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.add-item label {
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+
+.settings {
+  max-width: 600px;
+}
+.settings h2 {
+  font-size: 1.1rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
+    color: #eaeaea;
+    background-color: #1f1f1f;
   }
-
-  a:hover {
-    color: #24c8db;
-  }
-
   input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
+  button,
+  select {
+    color: #eaeaea;
+    background-color: #2a2a2a;
+    border-color: #3a3a3a;
   }
-  button:active {
-    background-color: #0f0f0f69;
+  .tabs button {
+    border-color: #3a3a3a;
+  }
+  .watch-row-wrap {
+    background: #262626;
+    border-color: #333;
+  }
+  .accordion {
+    border-color: #333;
+  }
+  .watch-row .price.up {
+    color: #ff6b5e;
+  }
+  .watch-row .price.down {
+    color: #4cd083;
   }
 }

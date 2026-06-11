@@ -69,3 +69,22 @@ export interface QuerySpec {
   onlineOnly?: boolean; // status online vs any (default online)
   stats?: StatFilter[];
 }
+
+/** One price reading saved to history. */
+export interface HistoryEntry {
+  ts: number;
+  amount: number;
+  currency: string;
+}
+
+/** A watchlist entry persisted to localStorage. */
+export interface WatchItem {
+  id: string;
+  label: string;
+  spec: QuerySpec;
+  favorite: boolean;
+  history: HistoryEntry[];
+  lastChecked: number | null;
+  lastTotal: number | null;
+  lastPartial: boolean;
+}
