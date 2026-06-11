@@ -5,6 +5,7 @@ import type { League, ParsedItem, PriceCheckResult, StatOption } from "./types";
 
 export const getLeagues = () => invoke<League[]>("get_leagues");
 export const getStats = () => invoke<StatOption[]>("get_stats");
+export const getFilters = () => invoke<unknown>("get_filters");
 
 /** `query` is the full trade2 POST body `{ query, sort }` (from buildSearchBody). */
 export const priceCheck = (league: string, query: unknown) =>
@@ -21,6 +22,8 @@ export const setPoesessid = (poesessid: string | null) =>
 
 export const getTradeHost = () => invoke<string>("get_trade_host");
 export const setTradeHost = (host: string) => invoke<void>("set_trade_host", { host });
+
+export const openInBrowser = (url: string) => invoke<void>("open_in_browser", { url });
 
 export const setCaptureHotkey = (accel: string) =>
   invoke<void>("set_capture_hotkey", { accel });

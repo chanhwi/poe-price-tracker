@@ -9,6 +9,7 @@ import { buildSearchBody, specFromParsedItem } from "./lib/query";
 import WatchRow from "./components/WatchRow";
 import Settings from "./components/Settings";
 import AddItem from "./components/AddItem";
+import ResultPanel from "./components/ResultPanel";
 
 type Tab = "all" | "fav" | "settings";
 
@@ -20,7 +21,15 @@ function applyResult(i: WatchItem, res: PriceCheckResult): WatchItem {
     history.push({ ts: Date.now(), amount: res.median.amount, currency: res.median.currency });
     if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
   }
-  return { ...i, history, lastChecked: Date.now(), lastTotal: res.total, lastPartial: res.partial };
+  return {
+    ...i,
+    history,
+    lastChecked: Date.now(),
+    lastTotal: res.total,
+    lastPartial: res.partial,
+    lastResults: res.listings,
+    tradeUrl: res.trade_url,
+  };
 }
 
 function itemFromParsed(p: ParsedItem): WatchItem {
@@ -36,7 +45,6 @@ function itemFromParsed(p: ParsedItem): WatchItem {
   };
 }
 
-/** Identity key for dedup (only identity-defining fields, not tunable ranges). */
 function specKey(s: QuerySpec): string {
   return JSON.stringify({ name: s.name, type: s.type, term: s.term, rarity: s.rarity, corrupted: s.corrupted });
 }
@@ -49,6 +57,7 @@ function App() {
   const [host, setHostState] = useState<string>("www.pathofexile.com");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const itemsRef = useRef<WatchItem[]>(items);
   useEffect(() => {
@@ -64,7 +73,6 @@ function App() {
     getLeagues().then(setLeagues).catch(() => {});
   }, []);
 
-  // An item captured via the global hotkey (Rust) arrives here; skip duplicates.
   useEffect(() => {
     let disposed = false;
     const un = listen<ParsedItem>("item-captured", (e) => {
@@ -89,7 +97,7 @@ function App() {
       console.error(e);
     }
     setHostState(h);
-    clearStatsCache(); // stat names are localized per region
+    clearStatsCache();
     getLeagues().then(setLeagues).catch(() => setLeagues([]));
   }
 
@@ -98,6 +106,7 @@ function App() {
       const it = itemsRef.current.find((i) => i.id === id);
       if (!it) return;
       setBusyId(id);
+      setSelectedId(id); // show this item's results in the right panel
       try {
         const res = await priceCheck(league, buildSearchBody(it.spec));
         setItems((prev) => prev.map((i) => (i.id === id ? applyResult(i, res) : i)));
@@ -121,6 +130,7 @@ function App() {
   }
 
   const visible = items.filter((i) => tab !== "fav" || i.favorite);
+  const selectedItem = items.find((i) => i.id === selectedId) ?? null;
 
   return (
     <main className="container">
@@ -151,35 +161,45 @@ function App() {
       {tab === "settings" ? (
         <Settings host={host} onChangeHost={changeHost} />
       ) : (
-        <>
-          <AddItem onAdd={(it) => setItems((prev) => [...prev, it])} />
-          <div className="row" style={{ justifyContent: "space-between", margin: "8px 0" }}>
-            <span style={{ opacity: 0.6 }}>{visible.length}개 항목</span>
-            <button disabled={refreshingAll || visible.length === 0} onClick={refreshAll}>
-              {refreshingAll ? "새로고침 중..." : "전체 새로고침"}
-            </button>
+        <div className="main-split">
+          <div className="left-pane">
+            <AddItem onAdd={(it) => setItems((prev) => [...prev, it])} />
+            <div className="row" style={{ justifyContent: "space-between", margin: "8px 0" }}>
+              <span style={{ opacity: 0.6 }}>{visible.length}개 항목</span>
+              <button disabled={refreshingAll || visible.length === 0} onClick={refreshAll}>
+                {refreshingAll ? "새로고침 중..." : "전체 새로고침"}
+              </button>
+            </div>
+            <div className="watchlist">
+              {visible.length === 0 && (
+                <p style={{ opacity: 0.6 }}>항목이 없습니다. 위에서 추가하거나 게임에서 단축키로 등록하세요.</p>
+              )}
+              {visible.map((it) => (
+                <WatchRow
+                  key={it.id}
+                  item={it}
+                  busy={busyId === it.id || refreshingAll}
+                  selected={selectedId === it.id}
+                  onRefresh={refresh}
+                  onSelect={setSelectedId}
+                  onToggleFav={(id) =>
+                    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, favorite: !i.favorite } : i)))
+                  }
+                  onRemove={(id) => {
+                    setItems((prev) => prev.filter((i) => i.id !== id));
+                    setSelectedId((s) => (s === id ? null : s));
+                  }}
+                  onSpecChange={(id, spec) =>
+                    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, spec } : i)))
+                  }
+                />
+              ))}
+            </div>
           </div>
-          <div className="watchlist">
-            {visible.length === 0 && (
-              <p style={{ opacity: 0.6 }}>항목이 없습니다. 위에서 추가하거나 게임에서 단축키로 등록하세요.</p>
-            )}
-            {visible.map((it) => (
-              <WatchRow
-                key={it.id}
-                item={it}
-                busy={busyId === it.id || refreshingAll}
-                onRefresh={refresh}
-                onToggleFav={(id) =>
-                  setItems((prev) => prev.map((i) => (i.id === id ? { ...i, favorite: !i.favorite } : i)))
-                }
-                onRemove={(id) => setItems((prev) => prev.filter((i) => i.id !== id))}
-                onSpecChange={(id, spec) =>
-                  setItems((prev) => prev.map((i) => (i.id === id ? { ...i, spec } : i)))
-                }
-              />
-            ))}
+          <div className="right-pane">
+            <ResultPanel item={selectedItem} />
           </div>
-        </>
+        </div>
       )}
     </main>
   );

@@ -43,9 +43,8 @@ impl GateState {
 /// single serial gate that self-throttles from the server's rate-limit headers.
 pub struct TradeClient {
     http: reqwest::Client,
-    /// Trade host — selects the language/region realm. Item names match the
-    /// realm's language (e.g. "www.pathofexile.com" = English,
-    /// "poe.game.daum.net" = Korean). Mutable so the user can switch regions.
+    /// Trade host — selects the language/region realm (e.g. www.pathofexile.com
+    /// = English, poe.game.daum.net = Korean). Mutable so the user can switch.
     host: RwLock<String>,
     realm: String,
     poesessid: RwLock<Option<String>>,
@@ -77,7 +76,6 @@ impl TradeClient {
         }
     }
 
-    /// The configured trade host (e.g. www.pathofexile.com / poe.game.daum.net).
     pub fn host(&self) -> String {
         self.host.read().unwrap().clone()
     }
@@ -89,7 +87,6 @@ impl TradeClient {
         }
     }
 
-    /// Set (or clear) the POESESSID session cookie used for authenticated calls.
     pub fn set_poesessid(&self, sid: Option<String>) {
         let sid = sid.filter(|s| !s.trim().is_empty());
         *self.poesessid.write().unwrap() = sid;
@@ -150,7 +147,6 @@ impl TradeClient {
         Ok(resp)
     }
 
-    /// `GET /api/trade2/data/leagues` — current PoE2 leagues.
     pub async fn leagues(&self) -> Result<Vec<League>, TradeError> {
         let url = format!("https://{}/api/trade2/data/leagues", self.host());
         let resp = self.send(Policy::Search, self.http.get(url.as_str())).await?;
@@ -158,7 +154,6 @@ impl TradeClient {
         Ok(parsed.result)
     }
 
-    /// `GET /api/trade2/data/stats` — the flattened mod/stat filter catalogue.
     pub async fn stats(&self) -> Result<Vec<StatOption>, TradeError> {
         let url = format!("https://{}/api/trade2/data/stats", self.host());
         let resp = self.send(Policy::Search, self.http.get(url.as_str())).await?;
@@ -178,10 +173,15 @@ impl TradeClient {
         Ok(out)
     }
 
-    /// `POST /api/trade2/search/{realm}/{league}` with a raw trade query object.
+    /// `GET /api/trade2/data/filters` — the full filter schema (for the
+    /// data-driven filter builder). Returned as raw JSON for the frontend.
+    pub async fn filters(&self) -> Result<Value, TradeError> {
+        let url = format!("https://{}/api/trade2/data/filters", self.host());
+        let resp = self.send(Policy::Search, self.http.get(url.as_str())).await?;
+        Ok(resp.json().await?)
+    }
+
     pub async fn search(&self, league: &str, query: Value) -> Result<SearchResponse, TradeError> {
-        // No trailing slash on the base, else push() yields a `search//poe2`
-        // double slash and the API 404s.
         let mut url = reqwest::Url::parse(&format!("https://{}/api/trade2/search", self.host()))
             .map_err(|e| TradeError::Api(format!("bad base url: {e}")))?;
         url.path_segments_mut()
@@ -194,8 +194,6 @@ impl TradeClient {
         Ok(resp.json::<SearchResponse>().await?)
     }
 
-    /// `GET /api/trade2/fetch/{ids}?query={id}` in batches of 10. Tolerates a
-    /// per-chunk transient failure; returns `(listings, partial)`.
     pub async fn fetch(
         &self,
         query_id: &str,
@@ -236,7 +234,8 @@ impl TradeClient {
         Ok((out, partial))
     }
 
-    /// Search then fetch the cheapest `SAMPLE_SIZE` listings and summarize price.
+    /// Search then fetch the cheapest `SAMPLE_SIZE` listings; returns each
+    /// listing (item name + price), a median, and a web trade deep link.
     pub async fn price_check(
         &self,
         league: &str,
@@ -244,13 +243,14 @@ impl TradeClient {
     ) -> Result<PriceCheckResult, TradeError> {
         let search = self.search(league, query).await?;
         let total = search.total;
+        let search_id = search.id.clone();
         let sample_n = SAMPLE_SIZE.min(search.result.len());
         let ids: Vec<String> = search.result.into_iter().take(sample_n).collect();
 
         let (results, partial) = if ids.is_empty() {
             (Vec::new(), false)
         } else {
-            self.fetch(&search.id, &ids).await?
+            self.fetch(&search_id, &ids).await?
         };
 
         let points: Vec<PricePoint> = results
@@ -266,17 +266,25 @@ impl TradeClient {
                     amount,
                     currency: p.currency.clone()?,
                     account: l.account.as_ref().and_then(|a| a.name.clone()),
+                    item: r.item.as_ref().and_then(item_display_name),
+                    mods: r.item.as_ref().map(item_mods).unwrap_or_default(),
                 })
             })
             .collect();
 
         let median = compute_median(&points);
+        // Web trade site deep link (opened in a real browser).
+        let lg = league.replace(' ', "%20");
+        let trade_url = format!("https://{}/trade2/search/poe2/{}/{}", self.host(), lg, search_id);
+
         Ok(PriceCheckResult {
             total,
             sampled: points.len(),
             listings: points,
             median,
             partial,
+            search_id,
+            trade_url,
         })
     }
 }
@@ -285,6 +293,31 @@ impl Default for TradeClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Best display name from an item payload: unique name, else full type line,
+/// else base type.
+fn item_display_name(v: &serde_json::Value) -> Option<String> {
+    let s = |k: &str| {
+        v.get(k)
+            .and_then(|x| x.as_str())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+    };
+    s("name").or_else(|| s("typeLine")).or_else(|| s("baseType"))
+}
+
+/// The item's fixed/rolled mod lines (implicit + explicit), for display.
+fn item_mods(v: &serde_json::Value) -> Vec<String> {
+    let arr = |k: &str| -> Vec<String> {
+        v.get(k)
+            .and_then(|x| x.as_array())
+            .map(|a| a.iter().filter_map(|m| m.as_str().map(|s| s.to_string())).collect())
+            .unwrap_or_default()
+    };
+    let mut out = arr("implicitMods");
+    out.extend(arr("explicitMods"));
+    out
 }
 
 /// Median amount within the most common currency among the sampled listings.
@@ -316,6 +349,8 @@ fn compute_median(points: &[PricePoint]) -> Option<PricePoint> {
         amount: med,
         currency: dominant,
         account: None,
+        item: None,
+        mods: Vec::new(),
     })
 }
 
@@ -340,14 +375,14 @@ mod live_tests {
     async fn live_price_check() {
         let c = TradeClient::new();
         let query = serde_json::json!({
-            "query": { "status": { "option": "online" } },
+            "query": { "status": { "option": "online" }, "type": "Sapphire Ring" },
             "sort": { "price": "asc" }
         });
         let res = c.price_check("Standard", query).await.expect("price_check failed");
-        println!(
-            "total={}, sampled={}, partial={}, median={:?}",
-            res.total, res.sampled, res.partial, res.median
-        );
+        println!("total={} sampled={} url={}", res.total, res.sampled, res.trade_url);
+        for l in res.listings.iter().take(5) {
+            println!("  {:?}  {} {}", l.item, l.amount, l.currency);
+        }
         assert!(res.total > 0);
     }
 }

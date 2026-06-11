@@ -1,4 +1,4 @@
-import type { HistoryEntry, QuerySpec, WatchItem } from "./types";
+import type { HistoryEntry, PricePoint, QuerySpec, WatchItem } from "./types";
 
 const WATCH_KEY = "poe-watchlist.v1";
 const LEAGUE_KEY = "poe-league.v1";
@@ -26,6 +26,8 @@ function normalizeWatchItem(x: unknown): WatchItem | null {
     lastChecked: typeof o.lastChecked === "number" ? o.lastChecked : null,
     lastTotal: typeof o.lastTotal === "number" ? o.lastTotal : null,
     lastPartial: o.lastPartial === true,
+    lastResults: Array.isArray(o.lastResults) ? (o.lastResults as PricePoint[]) : undefined,
+    tradeUrl: typeof o.tradeUrl === "string" ? o.tradeUrl : undefined,
   };
 }
 
@@ -45,7 +47,6 @@ export function saveWatchlist(items: WatchItem[]): void {
   try {
     localStorage.setItem(WATCH_KEY, JSON.stringify(items));
   } catch (e) {
-    // Surface (rather than silently swallow) quota/serialization failures.
     console.error("saveWatchlist failed (watchlist not persisted):", e);
   }
 }

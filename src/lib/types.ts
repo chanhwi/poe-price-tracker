@@ -28,6 +28,8 @@ export interface PricePoint {
   amount: number;
   currency: string;
   account: string | null;
+  item: string | null;
+  mods: string[];
 }
 
 /** Mirror of Rust `trade::model::PriceCheckResult`. */
@@ -37,6 +39,8 @@ export interface PriceCheckResult {
   listings: PricePoint[];
   median: PricePoint | null;
   partial: boolean;
+  search_id: string;
+  trade_url: string;
 }
 
 /** Mirror of Rust `trade::model::League`. */
@@ -87,6 +91,9 @@ export interface WatchItem {
   lastChecked: number | null;
   lastTotal: number | null;
   lastPartial: boolean;
+  /** Last search's result listings + web trade deep link (persisted). */
+  lastResults?: PricePoint[];
+  tradeUrl?: string;
 }
 
 /** Mirror of Rust `trade::model::StatOption` (get_stats command). */

@@ -34,6 +34,7 @@ pub fn run() {
             item::parse_item_text,
             trade::commands::get_leagues,
             trade::commands::get_stats,
+            trade::commands::get_filters,
             trade::commands::price_check,
             trade::commands::set_poesessid,
             session::open_login,
@@ -41,6 +42,7 @@ pub fn run() {
             session::clear_poesessid,
             session::set_trade_host,
             session::get_trade_host,
+            session::open_in_browser,
             hotkey::set_capture_hotkey,
             hotkey::get_capture_hotkey,
         ])

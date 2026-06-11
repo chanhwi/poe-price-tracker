@@ -17,6 +17,12 @@ pub async fn get_stats(client: State<'_, TradeClient>) -> Result<Vec<StatOption>
     client.stats().await
 }
 
+/// Fetch the full filter schema (data/filters) for the filter builder.
+#[tauri::command]
+pub async fn get_filters(client: State<'_, TradeClient>) -> Result<serde_json::Value, TradeError> {
+    client.filters().await
+}
+
 /// Run a price check for a pre-built trade2 query object against `league`.
 #[tauri::command]
 pub async fn price_check(

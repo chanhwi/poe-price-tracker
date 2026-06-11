@@ -276,3 +276,103 @@ button:disabled {
     background: #33405a;
   }
 }
+
+/* --- two-pane layout + result panel --- */
+.container {
+  max-width: 1100px;
+}
+.main-split {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.left-pane {
+  flex: 1;
+  min-width: 0;
+}
+.right-pane {
+  width: 340px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 12px;
+}
+@media (max-width: 760px) {
+  .main-split {
+    flex-direction: column;
+  }
+  .right-pane {
+    width: 100%;
+    position: static;
+  }
+}
+.watch-row-wrap.selected {
+  outline: 2px solid #396cd8;
+}
+.result-panel {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+  max-height: 78vh;
+  overflow: auto;
+}
+.result-panel.empty,
+.rp-empty {
+  opacity: 0.55;
+  font-size: 0.9em;
+}
+.rp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.rp-head button {
+  padding: 4px 8px;
+  font-size: 0.85em;
+}
+.rp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rp-row {
+  border-top: 1px solid #eee;
+  padding: 6px 2px;
+}
+.rp-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rp-name {
+  font-weight: 600;
+  font-size: 0.9em;
+}
+.rp-price {
+  font-size: 0.85em;
+  color: #396cd8;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rp-mods {
+  list-style: none;
+  margin: 2px 0;
+  padding: 0 0 0 6px;
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+.rp-acct {
+  font-size: 0.75em;
+  opacity: 0.5;
+}
+@media (prefers-color-scheme: dark) {
+  .result-panel {
+    background: #262626;
+    border-color: #333;
+  }
+  .rp-row {
+    border-color: #333;
+  }
+}

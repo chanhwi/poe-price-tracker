@@ -6,31 +6,40 @@ import FilterBuilder from "./FilterBuilder";
 interface Props {
   item: WatchItem;
   busy: boolean;
+  selected: boolean;
   onRefresh: (id: string) => void;
   onToggleFav: (id: string) => void;
   onRemove: (id: string) => void;
   onSpecChange: (id: string, spec: QuerySpec) => void;
+  onSelect: (id: string) => void;
 }
 
 export default function WatchRow({
   item,
   busy,
+  selected,
   onRefresh,
   onToggleFav,
   onRemove,
   onSpecChange,
+  onSelect,
 }: Props) {
   const [open, setOpen] = useState(false);
   const last = item.history.length ? item.history[item.history.length - 1] : null;
   const t = trend(item.history);
 
   return (
-    <div className="watch-row-wrap">
+    <div className={"watch-row-wrap" + (selected ? " selected" : "")}>
       <div className="watch-row">
         <button className="star" title="즐겨찾기" onClick={() => onToggleFav(item.id)}>
           {item.favorite ? "★" : "☆"}
         </button>
-        <span className="label" title={item.label}>
+        <span
+          className="label"
+          title="클릭하면 결과 표시"
+          onClick={() => onSelect(item.id)}
+          style={{ cursor: "pointer" }}
+        >
           {item.label}
         </span>
         <span className={"price " + t.dir}>

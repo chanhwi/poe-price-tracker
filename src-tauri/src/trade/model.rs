@@ -78,6 +78,10 @@ pub struct PricePoint {
     pub amount: f64,
     pub currency: String,
     pub account: Option<String>,
+    /// Item display name (unique name / full type line / base type).
+    pub item: Option<String>,
+    /// Item's fixed/rolled mod lines (implicit + explicit).
+    pub mods: Vec<String>,
 }
 
 /// Result of a price check: total matches, the sampled priced listings, and a
@@ -89,9 +93,11 @@ pub struct PriceCheckResult {
     pub sampled: usize,
     pub listings: Vec<PricePoint>,
     pub median: Option<PricePoint>,
-    /// True if some fetch chunks failed and the sample is incomplete (the median
-    /// is then based on the cheapest listings only and biases low).
+    /// True if some fetch chunks failed and the sample is incomplete.
     pub partial: bool,
+    /// The search's query id and the web trade-site deep link for it.
+    pub search_id: String,
+    pub trade_url: String,
 }
 
 // --- data/stats (mod filter catalogue) ---

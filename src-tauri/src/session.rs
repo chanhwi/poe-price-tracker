@@ -75,6 +75,13 @@ pub fn get_trade_host(client: State<'_, TradeClient>) -> String {
     client.host()
 }
 
+/// Open a URL in the user's default browser (the web trade-site deep link).
+#[tauri::command]
+pub fn open_in_browser(app: AppHandle, url: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+}
+
 fn read_poesessid(app: &AppHandle, host: &str) -> Result<Option<String>, String> {
     let win = app
         .get_webview_window(LOGIN_LABEL)
