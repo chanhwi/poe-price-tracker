@@ -44,7 +44,7 @@
 ```
 ┌─ Tauri 앱 ──────────────────────────────────────────────┐
 │ Rust 백엔드                                              │
-│  • global-shortcut (기본 Ctrl+Q, 재바인딩)              │
+│  • global-shortcut (기본 F7, 재바인딩)                  │
 │      → foreground가 PoE2인지 확인 → enigo로 Ctrl+C 모사 │
 │      → clipboard 읽기 → emit("item-captured", text)     │
 │  • reqwest HTTP: trade2 호출 (UA + POESESSID 헤더)       │
@@ -167,7 +167,7 @@ X-Rate-Limit-Ip-State: 1:10:0,1:60:0,1:300:0
 6. **레이트리밋 회피** — §6 throttle.
 7. **클라이언트 사이드 요청** — 사용자 IP/세션, 중앙 서버 ❌.
 
-**인게임 캡처(추가):** 마우스오버 + 핫키(기본 Ctrl+Q, 재바인딩) → enigo로 Ctrl+C 모사 → 클립보드 파싱 → 워치리스트 등록. 유니크=이름, 레어/일반=베이스 타입, +타락여부만 일단. **등록만 하고 검색은 안 함**(수동 버튼). PoE2 클립보드 파서는 Exiled Exchange 2 참고.
+**인게임 캡처(추가):** 마우스오버 + 핫키(기본 F7, 재바인딩) → enigo로 Ctrl+C 모사 → 클립보드 파싱 → 워치리스트 등록. 유니크=이름, 레어/일반=베이스 타입, +타락여부만 일단. **등록만 하고 검색은 안 함**(수동 버튼). PoE2 클립보드 파서는 Exiled Exchange 2 참고.
 
 **즐겨찾기 탭(추가):** 전체/즐겨찾기 탭, 항목에 `favorite` 플래그.
 

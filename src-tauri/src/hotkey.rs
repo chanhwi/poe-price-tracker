@@ -16,8 +16,8 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
 use crate::item::parse_item;
 
-/// Default capture hotkey (placeholder; user can rebind in Settings).
-pub const DEFAULT_HOTKEY: &str = "Control+KeyQ";
+/// Default capture hotkey (user can rebind in Settings).
+pub const DEFAULT_HOTKEY: &str = "F7";
 
 /// Currently-registered hotkey accelerator string.
 pub struct HotkeyState(pub RwLock<String>);
