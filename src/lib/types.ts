@@ -88,3 +88,11 @@ export interface WatchItem {
   lastTotal: number | null;
   lastPartial: boolean;
 }
+
+/** Mirror of Rust `trade::model::StatOption` (get_stats command). */
+export interface StatOption {
+  id: string;
+  text: string;
+  kind: string | null;
+  group: string | null;
+}

@@ -120,6 +120,9 @@ function App() {
                   setItems((prev) => prev.map((i) => (i.id === id ? { ...i, favorite: !i.favorite } : i)))
                 }
                 onRemove={(id) => setItems((prev) => prev.filter((i) => i.id !== id))}
+                onSpecChange={(id, spec) =>
+                  setItems((prev) => prev.map((i) => (i.id === id ? { ...i, spec } : i)))
+                }
               />
             ))}
           </div>

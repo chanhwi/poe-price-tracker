@@ -26,6 +26,7 @@ pub fn run() {
             greet,
             item::parse_item_text,
             trade::commands::get_leagues,
+            trade::commands::get_stats,
             trade::commands::price_check,
             trade::commands::set_poesessid,
             session::open_login,

@@ -93,3 +93,37 @@ pub struct PriceCheckResult {
     /// is then based on the cheapest listings only and biases low).
     pub partial: bool,
 }
+
+// --- data/stats (mod filter catalogue) ---
+
+#[derive(Debug, Deserialize)]
+pub struct StatsResponse {
+    #[serde(default)]
+    pub result: Vec<StatGroup>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StatGroup {
+    #[serde(default)]
+    pub label: Option<String>,
+    #[serde(default)]
+    pub entries: Vec<StatEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StatEntry {
+    pub id: String,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(rename = "type", default)]
+    pub kind: Option<String>,
+}
+
+/// Flattened stat option for the frontend filter builder.
+#[derive(Debug, Clone, Serialize)]
+pub struct StatOption {
+    pub id: String,
+    pub text: String,
+    pub kind: Option<String>,
+    pub group: Option<String>,
+}

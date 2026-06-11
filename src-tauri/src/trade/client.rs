@@ -168,6 +168,27 @@ impl TradeClient {
         Ok(parsed.result)
     }
 
+    /// `GET /api/trade2/data/stats` — the flattened mod/stat filter catalogue
+    /// (for the accordion filter builder). Large + static; the frontend caches it.
+    pub async fn stats(&self) -> Result<Vec<StatOption>, TradeError> {
+        let url = format!("https://{}/api/trade2/data/stats", self.host);
+        let resp = self.send(Policy::Search, self.http.get(url.as_str())).await?;
+        let parsed: StatsResponse = resp.json().await?;
+        let mut out = Vec::new();
+        for g in parsed.result {
+            let group = g.label.clone();
+            for e in g.entries {
+                out.push(StatOption {
+                    id: e.id,
+                    text: e.text.unwrap_or_default(),
+                    kind: e.kind,
+                    group: group.clone(),
+                });
+            }
+        }
+        Ok(out)
+    }
+
     /// `POST /api/trade2/search/{realm}/{league}` with a raw trade query object.
     /// The league is pushed as a percent-encoded path segment so names with
     /// spaces (e.g. "Runes of Aldur") or other reserved chars are handled safely.

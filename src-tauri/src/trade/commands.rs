@@ -2,13 +2,19 @@ use serde_json::Value;
 use tauri::State;
 
 use super::error::TradeError;
-use super::model::{League, PriceCheckResult};
+use super::model::{League, PriceCheckResult, StatOption};
 use super::TradeClient;
 
 /// Fetch the current PoE2 leagues (cheap data endpoint; good connectivity test).
 #[tauri::command]
 pub async fn get_leagues(client: State<'_, TradeClient>) -> Result<Vec<League>, TradeError> {
     client.leagues().await
+}
+
+/// Fetch the stat/mod filter catalogue for the accordion filter builder.
+#[tauri::command]
+pub async fn get_stats(client: State<'_, TradeClient>) -> Result<Vec<StatOption>, TradeError> {
+    client.stats().await
 }
 
 /// Run a price check for a pre-built trade2 query object against `league`.

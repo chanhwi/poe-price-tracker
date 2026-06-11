@@ -1,6 +1,7 @@
 import { useState } from "react";
-import type { WatchItem } from "../lib/types";
+import type { QuerySpec, WatchItem } from "../lib/types";
 import { formatEntry, trend, trendSymbol } from "../lib/currency";
+import FilterBuilder from "./FilterBuilder";
 
 interface Props {
   item: WatchItem;
@@ -8,9 +9,17 @@ interface Props {
   onRefresh: (id: string) => void;
   onToggleFav: (id: string) => void;
   onRemove: (id: string) => void;
+  onSpecChange: (id: string, spec: QuerySpec) => void;
 }
 
-export default function WatchRow({ item, busy, onRefresh, onToggleFav, onRemove }: Props) {
+export default function WatchRow({
+  item,
+  busy,
+  onRefresh,
+  onToggleFav,
+  onRemove,
+  onSpecChange,
+}: Props) {
   const [open, setOpen] = useState(false);
   const last = item.history.length ? item.history[item.history.length - 1] : null;
   const t = trend(item.history);
@@ -44,10 +53,7 @@ export default function WatchRow({ item, busy, onRefresh, onToggleFav, onRemove 
       </div>
       {open && (
         <div className="accordion">
-          <div style={{ opacity: 0.6, fontSize: 12, marginBottom: 4 }}>
-            검색 조건 (Section 8에서 거래소형 편집 UI 추가)
-          </div>
-          <pre>{JSON.stringify(item.spec, null, 2)}</pre>
+          <FilterBuilder spec={item.spec} onChange={(spec) => onSpecChange(item.id, spec)} />
         </div>
       )}
     </div>

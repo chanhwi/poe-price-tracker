@@ -1,9 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { League, ParsedItem, PriceCheckResult } from "./types";
+import type { League, ParsedItem, PriceCheckResult, StatOption } from "./types";
 
 /** Typed wrappers around the Rust Tauri commands. */
 
 export const getLeagues = () => invoke<League[]>("get_leagues");
+export const getStats = () => invoke<StatOption[]>("get_stats");
 
 /** `query` is the full trade2 POST body `{ query, sort }` (from buildSearchBody). */
 export const priceCheck = (league: string, query: unknown) =>

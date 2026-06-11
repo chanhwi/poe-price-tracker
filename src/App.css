@@ -187,3 +187,92 @@ button:disabled {
     color: #4cd083;
   }
 }
+
+/* --- accordion filter builder (Section 8) --- */
+.filter-builder {
+  font-size: 0.92em;
+}
+.fb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.fb-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+.fb-grid .fb-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.fb-grid input,
+.fb-grid select {
+  width: 100%;
+}
+.fb-stats {
+  margin-top: 10px;
+}
+.fb-stats-head {
+  font-size: 0.85em;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+.fb-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.fb-stat-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-picker {
+  position: relative;
+  margin-top: 4px;
+}
+.stat-picker input {
+  width: 100%;
+}
+.stat-results {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+}
+.stat-results li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.stat-results li:hover {
+  background: #eef3ff;
+}
+.stat-results li small {
+  opacity: 0.55;
+}
+.stat-err {
+  color: #c0392b;
+  font-size: 0.85em;
+}
+@media (prefers-color-scheme: dark) {
+  .stat-results {
+    background: #2a2a2a;
+    border-color: #3a3a3a;
+  }
+  .stat-results li:hover {
+    background: #33405a;
+  }
+}
